@@ -1,6 +1,6 @@
 import type { ReactNode, SVGProps } from "react";
 
-export type IconName = "grid" | "jobs" | "plus" | "offers" | "messages" | "user" | "arrow" | "arrow-left" | "chevron" | "pin" | "menu" | "close" | "info" | "shield" | "users" | "flag" | "categories" | "check" | "clock" | "external";
+export type IconName = "grid" | "jobs" | "plus" | "offers" | "messages" | "user" | "arrow" | "arrow-left" | "chevron" | "pin" | "menu" | "close" | "info" | "shield" | "users" | "flag" | "categories" | "check" | "clock" | "external" | "panel-left-close" | "panel-left-open" | "upload";
 const paths: Record<IconName, ReactNode> = {
   grid: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
   jobs: <><rect x="3" y="6" width="18" height="15" rx="2"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M3 11h18M10 11v3h4v-3"/></>,
@@ -11,6 +11,9 @@ const paths: Record<IconName, ReactNode> = {
   arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>,
   "arrow-left": <path d="M20 12H4m6-6-6 6 6 6"/>,
   chevron: <path d="m9 5 7 7-7 7"/>,
+  "panel-left-close": <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m7-12-3 3 3 3"/></>,
+  "panel-left-open": <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18m5-12 3 3-3 3"/></>,
+  upload: <><path d="M12 16V3m-5 5 5-5 5 5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></>,
   pin: <><path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
   menu: <path d="M4 6h16M4 12h16M4 18h16"/>,
   close: <path d="m6 6 12 12M6 18 18 6"/>,

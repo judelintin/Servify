@@ -1,3 +1,3 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ProviderVerification } from "@/features/provider/provider-verification";
 export const metadata = { title: "Provider verification" };
-export default function Page() { return <PlaceholderPage title="Verification" description="Submission requirements, privacy safeguards and review policies will be confirmed before this workflow opens."/>; }
+export default function Page() { return <ProviderVerification/>; }

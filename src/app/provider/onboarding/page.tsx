@@ -1,3 +1,6 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ProviderOnboarding } from "@/features/provider/provider-onboarding";
 export const metadata = { title: "Provider onboarding" };
-export default function Page() { return <PlaceholderPage title="Provider onboarding" description="Select services, coverage areas, and submit verification in a future stage." />; }
+export default async function Page({ searchParams }: { searchParams: Promise<{ step?: string | string[] }> }) {
+  const { step } = await searchParams;
+  return <ProviderOnboarding requestedStep={typeof step === "string" && /^[0-5]$/.test(step) ? Number(step) : undefined}/>;
+}

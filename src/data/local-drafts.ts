@@ -1,4 +1,5 @@
 import { parseLocalDraft, type LocalDraft } from "@/features/customer/draft-model";
+import { openLocalDatabase, readLocalRecords } from "./browser-storage";
 
 export class DraftConflictError extends Error { constructor() { super("This draft changed or was deleted in another tab. Your edits have not overwritten it. Save a separate copy or reload the latest version."); this.name = "DraftConflictError"; } }
 export class DraftCapacityError extends Error { constructor() { super("You have 25 local drafts. Delete an old draft before starting another."); this.name = "DraftCapacityError"; } }
@@ -9,7 +10,6 @@ const listeners = new Set<() => void>();
 let database: IDBDatabase | null = null;
 let initialization: Promise<void> | undefined;
 let channel: BroadcastChannel | null = null;
-const storageTimeoutMs = 4000;
 function emit(patch: Partial<Snapshot>) { snapshot = { ...snapshot, ...patch }; listeners.forEach((listener) => listener()); }
 export const getDraftSnapshot = () => snapshot;
 export const getServerDraftSnapshot = () => serverSnapshot;
@@ -18,19 +18,7 @@ const storageError = (error: unknown) => error instanceof DraftConflictError || 
 
 async function refresh() {
   if (!database) return;
-  const records = await new Promise<unknown[]>((resolve, reject) => {
-    const transaction = database!.transaction("drafts", "readonly");
-    const request = transaction.objectStore("drafts").getAll();
-    // Opening can succeed while this read queues behind a stalled transaction.
-    // Bound the read too, so every subscriber can leave its loading state.
-    const timer = setTimeout(() => {
-      reject(new Error("Draft read timed out"));
-      try { transaction.abort(); } catch { /* The transaction may already have finished. */ }
-    }, storageTimeoutMs);
-    transaction.oncomplete = () => { clearTimeout(timer); resolve(request.result as unknown[]); };
-    transaction.onerror = () => { clearTimeout(timer); reject(transaction.error); };
-    transaction.onabort = () => { clearTimeout(timer); reject(transaction.error); };
-  });
+  const records = await readLocalRecords(database, "drafts");
   const drafts = records.map(parseLocalDraft).filter((draft): draft is LocalDraft => draft !== null).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   emit({ drafts, warning: records.length !== drafts.length ? "Some saved drafts could not be read. Those records have been left untouched." : "" });
 }
@@ -38,16 +26,7 @@ export function initializeDrafts(): Promise<void> {
   if (initialization) return initialization;
   initialization = (async () => {
     try {
-      database = await new Promise<IDBDatabase>((resolve, reject) => {
-        if (!globalThis.indexedDB) { reject(new Error("IndexedDB unavailable")); return; }
-        const request = indexedDB.open("servify-local-drafts", 1);
-        let abandoned = false;
-        const timer = setTimeout(() => { abandoned = true; reject(new Error("Storage timed out")); }, storageTimeoutMs);
-        request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains("drafts")) request.result.createObjectStore("drafts", { keyPath: "id" }); };
-        request.onsuccess = () => { clearTimeout(timer); if (abandoned) request.result.close(); else resolve(request.result); };
-        request.onerror = () => { clearTimeout(timer); reject(request.error); };
-        request.onblocked = () => { abandoned = true; clearTimeout(timer); reject(new Error("Storage blocked")); };
-      });
+      database = await openLocalDatabase();
       database.onversionchange = () => { database?.close(); database = null; emit({ error: "Draft storage changed in another tab. Reload this page before making further changes." }); };
       await refresh();
       if (typeof BroadcastChannel !== "undefined") {

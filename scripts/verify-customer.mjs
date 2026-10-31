@@ -28,7 +28,7 @@ async function next(page) { await page.getByRole("button", { name: "Next", exact
 async function step(page, name) { await page.locator(".wizard-step-content > .eyebrow").filter({ hasText: name }).waitFor(); }
 async function records(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open("servify-local-drafts", 1);
+    const request = indexedDB.open("servify-local-drafts");
     request.onsuccess = () => { const db = request.result; const tx = db.transaction("drafts"); const read = tx.objectStore("drafts").getAll(); tx.oncomplete = () => { resolve(read.result.map((d) => ({ id: d.id, title: d.content?.title, status: d.status, revision: d.revision, photoCount: d.content?.photos?.length, photoType: d.content?.photos?.[0]?.blob?.type }))); db.close(); }; tx.onerror = () => reject(tx.error); };
     request.onerror = () => reject(request.error);
   }));
@@ -214,7 +214,7 @@ try {
   const corrupted = await browser.newContext(); const corruptedPage = await corrupted.newPage(); observe(corruptedPage);
   await corruptedPage.goto(`${base}/customer/dashboard`); await corruptedPage.getByRole("button", { name: "Drafts 0", exact: true }).waitFor();
   await corruptedPage.evaluate(() => new Promise((resolve) => {
-    const request = indexedDB.open("servify-local-drafts", 1);
+    const request = indexedDB.open("servify-local-drafts");
     request.onsuccess = () => { const db = request.result; const tx = db.transaction("drafts", "readwrite"); tx.objectStore("drafts").put({ id: "unsupported-future-record", schemaVersion: 99 }); tx.oncomplete = () => { db.close(); resolve(true); }; };
   }));
   await corruptedPage.reload({ waitUntil: "networkidle" });

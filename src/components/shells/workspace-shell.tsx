@@ -27,9 +27,9 @@ export function WorkspaceShell({ role, children }: { role: WorkspaceRole; childr
   const current = activeNavItem(navigation.items, pathname);
   const variant = role === "provider" ? "Pros" : role === "admin" ? "Admin" : undefined;
   const closeMenu = () => setMenuOpen(false);
-  function showTooltip(element: HTMLElement, label: string) {
+  function showTooltip(element: HTMLElement, label: string, always = false) {
     clearTimeout(tooltipTimer.current);
-    if (!collapsed || !window.matchMedia("(min-width: 1024px)").matches) return;
+    if ((!collapsed && !always) || !window.matchMedia("(min-width: 1024px)").matches) return;
     const rect = element.getBoundingClientRect();
     setTooltip({ label, top: Math.max(24, Math.min(rect.top + rect.height / 2, window.innerHeight - 24)), left: rect.right + 12 });
   }
@@ -41,7 +41,7 @@ export function WorkspaceShell({ role, children }: { role: WorkspaceRole; childr
       if (event.key === "Escape" && menuOpen) { closeMenu(); toggle.current?.focus(); }
     }}>
       <aside className="sidebar" tabIndex={0} aria-label={`${navigation.label} sidebar`} onScroll={() => setTooltip(null)}>
-        <div className="sidebar-header"><Brand variant={variant}/><Brand variant={variant} compact/><button type="button" className="sidebar-toggle icon-button" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} aria-controls="workspace-desktop-navigation" onClick={() => { clearTimeout(tooltipTimer.current); setTooltip(null); setSidebarCollapsed(!collapsed); }}><Icon name="chevron" size={16}/></button></div>
+        <div className="sidebar-header"><Brand variant={role === "provider" ? undefined : variant}/><Brand variant={role === "provider" ? undefined : variant} compact/><button type="button" className="sidebar-toggle icon-button" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-describedby={tooltip?.label === (collapsed ? "Expand sidebar" : "Collapse sidebar") ? tooltipId : undefined} aria-expanded={!collapsed} aria-controls="workspace-desktop-navigation" onClick={() => { clearTimeout(tooltipTimer.current); setTooltip(null); setSidebarCollapsed(!collapsed); }} onMouseEnter={event => showTooltip(event.currentTarget, collapsed ? "Expand sidebar" : "Collapse sidebar", true)} onMouseLeave={hideTooltip} onFocus={event => showTooltip(event.currentTarget, collapsed ? "Expand sidebar" : "Collapse sidebar", true)} onBlur={() => { clearTimeout(tooltipTimer.current); setTooltip(null); }}><Icon name={collapsed ? "panel-left-open" : "panel-left-close"} size={20}/></button></div>
         <p className="workspace-label eyebrow">{navigation.eyebrow}</p>
         <nav id="workspace-desktop-navigation" aria-label={`${navigation.label} navigation`}>{nav}</nav>
         <div className="sidebar-bottom">
@@ -58,7 +58,7 @@ export function WorkspaceShell({ role, children }: { role: WorkspaceRole; childr
           <footer className="workspace-footer"><PreviewNote/><Link href="/design-system">Design system ↗</Link></footer>
         </div>
       </div>
-      {tooltip && collapsed && createPortal(<div id={tooltipId} role="tooltip" className="workspace-tooltip" style={{ top: tooltip.top, left: tooltip.left }} onMouseEnter={() => clearTimeout(tooltipTimer.current)} onMouseLeave={hideTooltip}>{tooltip.label}</div>, document.body)}
+      {tooltip && createPortal(<div id={tooltipId} role="tooltip" className="workspace-tooltip" style={{ top: tooltip.top, left: tooltip.left }} onMouseEnter={() => clearTimeout(tooltipTimer.current)} onMouseLeave={hideTooltip}>{tooltip.label}</div>, document.body)}
     </div>
   );
 }

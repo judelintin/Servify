@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Icon, type IconName } from "@/components/ui/icon";
-import { Badge, ButtonLink, Card, EmptyState, PageHeading } from "@/components/ui/primitives";
+import { Badge, Card, EmptyState, PageHeading } from "@/components/ui/primitives";
 
 export function JourneyGuide({ provider = false }: { provider?: boolean }) {
   const steps = provider ? [
@@ -14,9 +14,6 @@ export function JourneyGuide({ provider = false }: { provider?: boolean }) {
     ["Get it done", "Connect about your job and confirm the finished work."],
   ];
   return <aside className="guide-panel" aria-label="Marketplace journey"><p className="eyebrow">A better way to connect</p><h2>{provider ? "Local skills.\nReal possibilities." : "Good help,\nwithout the guesswork."}</h2><ol className="step-list">{steps.map(([title, description], index) => <li key={title}><span className="step-number" aria-hidden="true">{index + 1}</span><div><strong>{title}</strong><p>{description}</p></div></li>)}</ol><div className="guide-bottom"><Icon name="pin" size={15}/><span>Built with Ibadan in mind.</span></div></aside>;
-}
-export function ProviderDashboard() {
-  return <><PageHeading eyebrow="Servify for Pros" title="Make room for your next job." description="A space for your skills, offers and the work ahead." action={<ButtonLink href="/provider/profile" variant="secondary" icon="arrow">Explore your profile</ButtonLink>}/><div className="dashboard-grid"><div className="dashboard-main"><Card className="workspace-intro"><span className="service-icon"><Icon name="user"/></span><div><h2>Your skills deserve a good introduction.</h2><p>Your profile, service areas and verification will live here.</p></div></Card><Card><div className="section-card-head"><h2>Work on your horizon</h2><Badge>Not connected</Badge></div><EmptyState icon="jobs" title="The right work starts with a connection." description="Relevant job requests will appear here once the marketplace is available. There are no live jobs in this preview." action={<ButtonLink href="/provider/jobs" variant="secondary" icon="arrow">Explore available jobs</ButtonLink>}/></Card></div><JourneyGuide provider/></div></>;
 }
 export function AdminDashboard() {
   const operations: { title: string; description: string; href: string; icon: IconName }[] = [
