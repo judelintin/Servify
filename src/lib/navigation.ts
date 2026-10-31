@@ -4,7 +4,7 @@ export interface NavItem { href: string; label: string; icon: IconName; match?: 
 export const workspaceNavigation: Record<WorkspaceRole, { label: string; eyebrow: string; items: NavItem[] }> = {
   customer: { label: "Customer workspace", eyebrow: "Your workspace", items: [
     { href: "/customer/dashboard", label: "Dashboard", icon: "grid" },
-    { href: "/customer/jobs", label: "My jobs", icon: "jobs", match: ["/jobs/"] },
+    { href: "/customer/jobs", label: "My jobs", icon: "jobs", match: ["/jobs/", "/customer/active-jobs"] },
     { href: "/jobs/new", label: "Post a job", icon: "plus" },
     { href: "/offers", label: "Offers", icon: "offers" },
     { href: "/conversations", label: "Messages", icon: "messages" },

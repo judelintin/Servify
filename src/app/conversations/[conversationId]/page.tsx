@@ -1,3 +1,3 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { JobConversation } from "@/features/delivery/messaging";
 export const metadata = { title: "Job conversation" };
-export default function Page() { return <PlaceholderPage title="Job conversation" description="The job customer and accepted provider will communicate here in a future stage." />; }
+export default async function Page({ params }: { params: Promise<{ conversationId: string }> }) { const { conversationId } = await params; return <JobConversation jobId={conversationId} role="customer"/>; }

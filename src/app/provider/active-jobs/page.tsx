@@ -1,3 +1,3 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ActiveJobs } from "@/features/delivery/workspace";
 export const metadata = { title: "Active jobs" };
-export default function Page() { return <PlaceholderPage title="Active jobs" description="Keep a clear view of accepted work and its next steps."/>; }
+export default function Page() { return <ActiveJobs role="provider"/>; }

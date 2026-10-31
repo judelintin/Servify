@@ -91,7 +91,7 @@ try {
     await page.getByRole("button", { name: "Preview requirements", exact: true }).click(); await page.locator(".provider-verification-result:focus").waitFor();
     await page.getByText("Not submitted", { exact: true }).waitFor(); await layout(page, "verification-preview", width);
     await page.reload(); assert.equal(await page.getByLabel("Review type to explore").inputValue(), "");
-    for (const route of ["/provider/jobs", "/provider/offers", "/provider/active-jobs", "/provider/messages"]) { assert.equal((await page.goto(`${base}${route}`)).status(), 200); if (route === "/provider/jobs") await page.getByText("No preview opportunities here yet.", { exact: true }).waitFor(); else if (route === "/provider/offers") await page.getByText("Room for your next proposal.", { exact: true }).waitFor(); else await noLive(page); }
+    for (const route of ["/provider/jobs", "/provider/offers", "/provider/active-jobs", "/provider/messages"]) { assert.equal((await page.goto(`${base}${route}`)).status(), 200); if (route === "/provider/jobs") await page.getByText("No preview opportunities here yet.", { exact: true }).waitFor(); else if (route === "/provider/offers") await page.getByText("Room for your next proposal.", { exact: true }).waitFor(); else if (route === "/provider/active-jobs") await page.getByText("A place for your next steps.", { exact: true }).waitFor(); else await page.getByText("A conversation starts with a selection.", { exact: true }).waitFor(); }
     results.push({ width, lifecycle: "pass", verification: "not submitted", portfolio: "add/replace/remove/reload pass" });
     console.log(`PASS ${width}px: provider onboarding, validation, profile edit/reload, portfolio, dashboard, verification and navigation`);
     await context.close();
@@ -164,4 +164,3 @@ try {
   assert.equal(requests.filter(request => request.method === "POST").length, 0);
   await writeFile(`${output}/${process.env.SERVIFY_SMOKE ? "smoke-" : ""}results.json`, JSON.stringify({ results, errors, remoteMutations: 0 }, null, 2));
 } finally { await browser.close(); }
-async function noLive(page) { await page.getByText(/This part of Servify is being prepared/).waitFor(); }

@@ -4,6 +4,7 @@ import { activeOffer, emptyMarketplace, parseMarketplace, validateOffer, type Ma
 import { openLocalDatabase, readLocalRecords, storageTimeoutMs } from "./browser-storage";
 import { getDraftSnapshot } from "./local-drafts";
 import { getProviderSnapshot } from "./local-provider";
+import { createDelivery } from "@/features/delivery/model";
 
 export class MarketplaceError extends Error {}
 type Snapshot = { ready: boolean; mode: "browser" | "memory"; data: Marketplace; error: string; warning: string; blocked: boolean };
@@ -42,7 +43,7 @@ export function initializeMarketplace(): Promise<void> {
 }
 type Source = { draftId?: string; provider?: boolean };
 type Action<T> = (data: Marketplace, source: { draft: unknown; profile: unknown }) => T;
-async function mutate<T>(action: Action<T>, source: Source = {}): Promise<T> {
+export async function mutateMarketplace<T>(action: Action<T>, source: Source = {}): Promise<T> {
   await initializeMarketplace();
   try {
     if (snapshot.blocked) throw new MarketplaceError("This preview is read-only until storage recovers. Your saved records have not been replaced.");
@@ -80,6 +81,7 @@ async function mutate<T>(action: Action<T>, source: Source = {}): Promise<T> {
     emit({ error: message }); throw new MarketplaceError(message);
   }
 }
+const mutate = mutateMarketplace;
 export function publishPreviewJob(draftId: string, expectedRevision: number) {
   return mutate((data, source) => {
     const draft = parseLocalDraft(source.draft);
@@ -129,6 +131,7 @@ export function selectPreviewOffer(id: string, expectedOfferRevision: number, ex
     if (!offer || !job || offer.status !== "submitted" || offer.revision !== expectedOfferRevision || job.revision !== expectedJobRevision || job.status !== "preview_published" || job.selectedOfferId !== null) throw new MarketplaceError("This offer changed, was withdrawn, or a provider has already been selected. Reload to review the current preview state.");
     const now = new Date().toISOString(); job.status = "provider_selected"; job.selectedOfferId = offer.id; job.revision += 1;
     for (const other of data.offers.filter(other => other.jobId === job.id && activeOffer(other))) { other.status = other.id === offer.id ? "selected" : "unavailable"; other.revision += 1; other.updatedAt = now; }
-    data.selections.push({ id: crypto.randomUUID(), jobId: job.id, offerId: offer.id, providerId: offer.providerId, selectedAt: now });
+    const selection = { id: crypto.randomUUID(), jobId: job.id, offerId: offer.id, providerId: offer.providerId, selectedAt: now };
+    data.selections.push(selection); data.deliveries.push(createDelivery(selection));
   });
 }

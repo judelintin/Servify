@@ -1,3 +1,3 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ConversationList } from "@/features/delivery/messaging";
 export const metadata = { title: "Provider messages" };
-export default function Page() { return <PlaceholderPage title="Messages" description="Conversations with customers will be linked to accepted jobs. Messaging is not available yet."/>; }
+export default function Page() { return <ConversationList role="provider"/>; }
