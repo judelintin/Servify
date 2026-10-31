@@ -55,7 +55,7 @@ export function WorkspaceShell({ role, children }: { role: WorkspaceRole; childr
         <header className="workspace-topbar"><div className="workspace-breadcrumb"><span>{navigation.label}</span><Icon name="chevron" size={12}/><strong>{current?.label ?? "Workspace"}</strong></div><div className="topbar-meta"><span className="location-label"><Icon name="pin" size={15}/>Ibadan-first</span><Badge tone="blue">Design preview</Badge></div></header>
         <div className="workspace-content">
           <main id="main-content" tabIndex={-1}>{children}</main>
-          <footer className="workspace-footer"><PreviewNote/><Link href="/design-system">Design system ↗</Link></footer>
+          <footer className="workspace-footer"><PreviewNote marketplace/><Link href="/design-system">Design system ↗</Link></footer>
         </div>
       </div>
       {tooltip && createPortal(<div id={tooltipId} role="tooltip" className="workspace-tooltip" style={{ top: tooltip.top, left: tooltip.left }} onMouseEnter={() => clearTimeout(tooltipTimer.current)} onMouseLeave={hideTooltip}>{tooltip.label}</div>, document.body)}

@@ -1,3 +1,3 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ProviderJobs } from "@/features/marketplace/provider-jobs";
 export const metadata = { title: "Available jobs" };
-export default function Page() { return <PlaceholderPage title="Available jobs" description="Relevant job requests will be matched to your services and coverage areas in a later stage."/>; }
+export default function Page() { return <ProviderJobs/>; }

@@ -91,7 +91,7 @@ try {
     await page.getByRole("button", { name: "Preview requirements", exact: true }).click(); await page.locator(".provider-verification-result:focus").waitFor();
     await page.getByText("Not submitted", { exact: true }).waitFor(); await layout(page, "verification-preview", width);
     await page.reload(); assert.equal(await page.getByLabel("Review type to explore").inputValue(), "");
-    for (const route of ["/provider/jobs", "/provider/offers", "/provider/active-jobs", "/provider/messages"]) { assert.equal((await page.goto(`${base}${route}`)).status(), 200); await noLive(page); }
+    for (const route of ["/provider/jobs", "/provider/offers", "/provider/active-jobs", "/provider/messages"]) { assert.equal((await page.goto(`${base}${route}`)).status(), 200); if (route === "/provider/jobs") await page.getByText("No preview opportunities here yet.", { exact: true }).waitFor(); else if (route === "/provider/offers") await page.getByText("Room for your next proposal.", { exact: true }).waitFor(); else await noLive(page); }
     results.push({ width, lifecycle: "pass", verification: "not submitted", portfolio: "add/replace/remove/reload pass" });
     console.log(`PASS ${width}px: provider onboarding, validation, profile edit/reload, portfolio, dashboard, verification and navigation`);
     await context.close();
@@ -126,8 +126,8 @@ try {
   await legacyPage.getByRole("button", { name: "Save & exit", exact: true }).click(); await legacyPage.waitForURL(`${base}/provider/profile`);
   await legacyPage.goto(`${base}/customer/jobs`); await legacyPage.getByRole("heading", { name: "Legacy local draft fixture", exact: true }).waitFor();
   const legacyRecord = await legacyPage.evaluate(() => new Promise(resolve => { const request = indexedDB.open("servify-local-drafts"); request.onsuccess = () => { const db = request.result, tx = db.transaction("drafts"); const read = tx.objectStore("drafts").get("11111111-1111-4111-8111-111111111111"); tx.oncomplete = () => { resolve({ version: db.version, revision: read.result.revision, updatedAt: read.result.updatedAt }); db.close(); }; }; }));
-  assert.deepEqual(legacyRecord, { version: 2, revision: 3, updatedAt: "2026-10-30T10:00:00.000Z" });
-  await legacy.close(); console.log("PASS additive v1 → v2 migration and unchanged existing customer draft");
+  assert.deepEqual(legacyRecord, { version: 3, revision: 3, updatedAt: "2026-10-30T10:00:00.000Z" });
+  await legacy.close(); console.log("PASS additive v1 → v3 migration and unchanged existing customer draft");
   // Local persistence failures and conflicts are exercised without touching the review profile.
   for (const failure of ["unavailable", "read-stalled", "write-failed", "malformed", "conflict"]) {
     const context = await browser.newContext();

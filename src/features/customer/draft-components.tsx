@@ -11,7 +11,7 @@ import { useLocalDrafts } from "./use-local-drafts";
 
 export function DraftStorageNotice({ hideError = false }: { hideError?: boolean }) {
   const { mode, warning, error } = useLocalDrafts();
-  return <div className="draft-notices"><div className="local-draft-notice"><Icon name="info" size={17}/><div><strong>{mode === "browser" ? "Your draft. Only on this browser." : "Temporary drafts · this tab only"}</strong><p>{mode === "browser" ? "Nothing is published or sent to providers. Anyone using this browser profile may see saved drafts." : "Reloading or closing this tab will lose these drafts. Nothing is sent to providers."}</p></div><Badge tone="blue">Local only</Badge></div>{warning && <Feedback title="A note about storage">{warning}</Feedback>}{error && !hideError && <Feedback title="Draft storage needs attention" tone="error" live>{error}</Feedback>}</div>;
+  return <div className="draft-notices"><div className="local-draft-notice"><Icon name="info" size={17}/><div><strong>{mode === "browser" ? "Your draft. Only on this browser." : "Temporary drafts · this tab only"}</strong><p>{mode === "browser" ? "Nothing is published online or sent to real providers. Anyone using this browser profile may see saved drafts." : "Reloading or closing this tab will lose these drafts. Nothing is sent to providers."}</p></div><Badge tone="blue">Local only</Badge></div>{warning && <Feedback title="A note about storage">{warning}</Feedback>}{error && !hideError && <Feedback title="Draft storage needs attention" tone="error" live>{error}</Feedback>}</div>;
 }
 export function PhotoPreview({ photo, index = 0 }: { photo: DraftPhoto; index?: number }) {
   const image = useRef<HTMLImageElement>(null);
@@ -19,13 +19,13 @@ export function PhotoPreview({ photo, index = 0 }: { photo: DraftPhoto; index?: 
   // eslint-disable-next-line @next/next/no-img-element -- Local Blob URLs never pass through the server image optimizer.
   return <img ref={image} alt={photo.alt || `Job photo ${index + 1}`} width={320} height={240} className="draft-photo-image"/>;
 }
-export function DeleteDraftButton({ draft, onDeleted }: { draft: LocalDraft; onDeleted?: () => void }) {
+export function DeleteDraftButton({ draft, onDeleted, previewCopy = false }: { draft: LocalDraft; onDeleted?: () => void; previewCopy?: boolean }) {
   const [confirming, setConfirming] = useState(false); const [busy, setBusy] = useState(false);
   const confirmedRevision = useRef(draft.revision);
   const cancel = useRef<HTMLButtonElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   async function remove() { setBusy(true); try { await deleteLocalDraft(draft.id, confirmedRevision.current); onDeleted?.(); } catch { setBusy(false); } }
-  if (!confirming) return <button ref={trigger} type="button" className="draft-delete-trigger" onClick={() => { confirmedRevision.current = draft.revision; setConfirming(true); requestAnimationFrame(() => cancel.current?.focus()); }}>Delete draft</button>;
-  return <div className="draft-delete-confirm" role="region" aria-label="Confirm draft deletion"><strong>Delete this local draft?</strong><p>This removes its answers and photos from this browser. You can’t undo this.</p><div className="component-row"><Button ref={cancel} variant="secondary" disabled={busy} onClick={() => { setConfirming(false); requestAnimationFrame(() => trigger.current?.focus()); }}>Keep draft</Button><Button className="button-danger" disabled={busy} onClick={() => void remove()}>{busy ? "Deleting…" : "Yes, delete draft"}</Button></div></div>;
+  if (!confirming) return <button ref={trigger} type="button" className="draft-delete-trigger" onClick={() => { confirmedRevision.current = draft.revision; setConfirming(true); requestAnimationFrame(() => cancel.current?.focus()); }}>{previewCopy ? "Delete private source copy" : "Delete draft"}</button>;
+  return <div className="draft-delete-confirm" role="region" aria-label="Confirm draft deletion"><strong>{previewCopy ? "Delete this private source copy?" : "Delete this local draft?"}</strong><p>{previewCopy ? "The published snapshot, its photos and offers will remain. Only the private source draft is deleted." : "This removes its answers and photos from this browser."} You can’t undo this.</p><div className="component-row"><Button ref={cancel} variant="secondary" disabled={busy} onClick={() => { setConfirming(false); requestAnimationFrame(() => trigger.current?.focus()); }}>Keep draft</Button><Button className="button-danger" disabled={busy} onClick={() => void remove()}>{busy ? "Deleting…" : "Yes, delete draft"}</Button></div></div>;
 }
 export function DraftList({ drafts, compact = false }: { drafts: LocalDraft[]; compact?: boolean }) {
   if (!drafts.length) return <EmptyState title="Your next project starts here." description="Make a little room for a fix, a fresh start or an everyday to-do. Start a draft and come back whenever you’re ready." action={<ButtonLink href="/jobs/new" icon="plus">Start your first draft</ButtonLink>}/>;

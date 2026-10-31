@@ -27,4 +27,4 @@ export function Feedback({ title, children, tone = "info", live = false }: { tit
   return <div className={`feedback feedback-${tone}`} role={live ? tone === "error" ? "alert" : "status" : undefined}><Icon name={tone === "success" ? "check" : "info"} size={18}/><div><strong>{title}</strong>{children && <p>{children}</p>}</div></div>;
 }
 export function LoadingState({ label = "Loading your workspace…" }: { label?: string }) { return <div className="loading-state" role="status"><span className="spinner" aria-hidden="true"/>{label}</div>; }
-export function PreviewNote() { return <p className="preview-note"><Icon name="info" size={14}/><span>Design preview · Marketplace services are not available yet. No account or activity data is connected.</span></p>; }
+export function PreviewNote({ marketplace = false }: { marketplace?: boolean }) { return <p className="preview-note"><Icon name="info" size={14}/><span>{marketplace ? "Local prototype · Records stay in this browser. No authenticated accounts, live bookings or provider communications." : "Design preview · Marketplace services are not available yet. No account or activity data is connected."}</span></p>; }

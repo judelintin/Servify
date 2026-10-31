@@ -4,18 +4,18 @@ export const storageTimeoutMs = 4000;
 export function openLocalDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (!globalThis.indexedDB) { reject(new Error("IndexedDB unavailable")); return; }
-    const request = indexedDB.open(localDatabaseName, 2);
+    const request = indexedDB.open(localDatabaseName, 3);
     let abandoned = false;
     const timer = setTimeout(() => { abandoned = true; reject(new Error("Storage timed out")); }, storageTimeoutMs);
     request.onupgradeneeded = () => {
-      for (const store of ["drafts", "providerProfiles"]) if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store, { keyPath: "id" });
+      for (const store of ["drafts", "providerProfiles", "marketplace"]) if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store, { keyPath: "id" });
     };
     request.onsuccess = () => { clearTimeout(timer); if (abandoned) request.result.close(); else resolve(request.result); };
     request.onerror = () => { clearTimeout(timer); reject(request.error); };
     request.onblocked = () => { abandoned = true; clearTimeout(timer); reject(new Error("Close older Servify tabs and reload to update local storage.")); };
   });
 }
-export function readLocalRecords(database: IDBDatabase, store: "drafts" | "providerProfiles"): Promise<unknown[]> {
+export function readLocalRecords(database: IDBDatabase, store: "drafts" | "providerProfiles" | "marketplace"): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(store, "readonly");
     const request = transaction.objectStore(store).getAll();

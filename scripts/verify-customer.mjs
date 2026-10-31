@@ -152,8 +152,8 @@ try {
     await page.getByRole("button", { name: "Keep draft", exact: true }).click(); assert.equal((await records(page)).length, 2);
     await page.getByRole("button", { name: "Delete draft", exact: true }).click(); await page.getByRole("button", { name: "Yes, delete draft", exact: true }).click();
     await page.waitForURL(`${base}/customer/jobs`); assert.equal((await records(page)).length, 1);
-    await page.getByLabel("Find a draft").fill("no-such-request"); await page.getByRole("heading", { name: "No matching drafts." }).waitFor();
-    await page.getByLabel("Find a draft").fill(""); await page.getByRole("heading", { name: `${title} — revised`, exact: true }).waitFor();
+    await page.getByLabel("Find a request").fill("no-such-request"); await page.getByRole("heading", { name: "No matching drafts." }).waitFor();
+    await page.getByLabel("Find a request").fill(""); await page.getByRole("heading", { name: `${title} — revised`, exact: true }).waitFor();
     results.push({ width, flow: "pass", persistence: "pass", editDelete: "pass", overflow: false });
     console.log(`PASS ${width}px: seven steps, errors, keyboard, photo/reload persistence, review editing, unique drafts, deletion and list search`);
     if (!retained) retained = { context, page, id }; else await context.close();
