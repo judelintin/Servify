@@ -1,0 +1,9 @@
+import { PublicShell, SectionContainer } from "@/components/shells/public-shell";
+import { ButtonLink } from "@/components/ui/primitives";
+import { ServiceCategories } from "@/components/service-categories";
+
+export default function HomePage() {
+  return (
+    <PublicShell><SectionContainer><section className="public-hero" aria-labelledby="home-title"><div><div className="local-label">Local services. Starting with Ibadan.</div><h1 id="home-title">Find the right person.<br/><span>Get it done.</span></h1><p className="hero-description">For the fixes, the fresh starts and the everyday to-dos. A simpler way to connect with local service professionals.</p><div className="hero-actions"><ButtonLink href="/customer/dashboard" icon="arrow">Explore your workspace</ButtonLink><ButtonLink href="/provider/dashboard" variant="secondary">I’m a professional</ButtonLink></div><p className="hero-footnote">A first look at Servify. The marketplace is not live yet.</p></div><aside className="public-journey"><p className="eyebrow">From to-do to done</p><h2>Your job. Your choice.<br/>A clearer way forward.</h2>{[["Describe the job", "Tell providers what you need."], ["Compare your offers", "Choose the scope and person that fit."], ["Connect and get it done", "Keep the conversation with your job."]].map(([title, description], index) => <div className="public-step" key={title}><span className="public-step-number">0{index + 1}</span><div><strong>{title}</strong><p>{description}</p></div></div>)}</aside></section><section className="public-categories" aria-labelledby="home-services"><div className="section-heading"><h2 id="home-services">A few of the things we’re building for</h2></div><ServiceCategories/><p className="service-note">Service categories shown for design review. Launch coverage is still being confirmed.</p></section></SectionContainer></PublicShell>
+  );
+}
