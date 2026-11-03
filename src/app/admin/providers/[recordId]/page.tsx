@@ -1,0 +1,1 @@
+import {OperationsPage} from "@/features/operations/components"; export default async function Page({params}:{params:Promise<{recordId:string}>}){const {recordId}=await params;return <OperationsPage view="providers" id={recordId}/>;}

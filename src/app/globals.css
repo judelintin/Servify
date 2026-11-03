@@ -309,3 +309,4 @@ p { overflow-wrap: anywhere; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 .trust-stars{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.trust-stars label{cursor:pointer;padding:10px;border:1px solid #8992a6;border-radius:8px}.trust-stars label:has(:checked){background:#edf1fc;border-color:#3155c8}.trust-stars label:focus-within{outline:3px solid #3155c8;outline-offset:2px}
+.ops-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:16px}.ops-grid .market-confirm strong{font-size:28px;color:#3155c8}.ops-grid .market-confirm:hover{border-color:#3155c8}

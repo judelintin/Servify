@@ -1,3 +1,1 @@
-import { AdminDashboard } from "@/components/workspace-dashboards";
-export const metadata = { title: "Admin dashboard" };
-export default function Page() { return <AdminDashboard/>; }
+import {OperationsPage} from "@/features/operations/components"; export default function Page(){return <OperationsPage view="overview"/>;}

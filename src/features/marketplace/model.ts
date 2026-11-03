@@ -1,3 +1,4 @@
+import {emptyOperations,parseOperations,type Operations} from "@/features/operations/model";
 import { emptyTrust, parseTrust, type Trust } from "@/features/trust/model";
 import { firstIncompleteStep, isDraftId, nairaToKobo, parseLocalDraft, type LocalDraft } from "@/features/customer/draft-model";
 import { nextProviderStep, parseProviderProfile, type LocalProviderProfile } from "@/features/provider/profile-model";
@@ -10,8 +11,8 @@ export interface PreviewProvider { id: string; createdAt: string; profile: Local
 export interface OfferContent { price: string; priceType: "estimate" | "fixed"; scope: string; availability: string; conditions: string }
 export interface PreviewOffer { id: string; jobId: string; providerId: string; revision: number; status: OfferStatus; createdAt: string; updatedAt: string; submittedAt: string | null; content: OfferContent }
 export interface PreviewSelection { id: string; jobId: string; offerId: string; providerId: string; selectedAt: string }
-export interface Marketplace { id: "local-marketplace"; schemaVersion: 3; revision: number; jobs: PreviewJob[]; providers: PreviewProvider[]; offers: PreviewOffer[]; selections: PreviewSelection[]; activeProviderId: string | null; deliveries: JobDelivery[]; trust: Trust }
-export const emptyMarketplace = (): Marketplace => ({ id: "local-marketplace", schemaVersion: 3, revision: 0, jobs: [], providers: [], offers: [], selections: [], activeProviderId: null, deliveries: [], trust: emptyTrust() });
+export interface Marketplace { id: "local-marketplace"; schemaVersion: 4; revision: number; jobs: PreviewJob[]; providers: PreviewProvider[]; offers: PreviewOffer[]; selections: PreviewSelection[]; activeProviderId: string | null; deliveries: JobDelivery[]; trust: Trust; operations: Operations }
+export const emptyMarketplace = (): Marketplace => ({ id: "local-marketplace", schemaVersion: 4, revision: 0, jobs: [], providers: [], offers: [], selections: [], activeProviderId: null, deliveries: [], trust: emptyTrust(), operations: emptyOperations() });
 export const emptyOffer = (): OfferContent => ({ price: "", priceType: "estimate", scope: "", availability: "", conditions: "" });
 export type OfferErrors = Partial<Record<keyof OfferContent, string>>;
 export function validateOffer(c: OfferContent): OfferErrors {
@@ -40,7 +41,7 @@ function offerContent(value: unknown): value is OfferContent {
 export function parseMarketplace(value: unknown): Marketplace | null {
   if (!value || typeof value !== "object") return null;
   const m = value as Omit<Marketplace, "schemaVersion"> & { schemaVersion: number };
-  if (m.id !== "local-marketplace" || ![1, 2, 3].includes(m.schemaVersion) || !Number.isInteger(m.revision) || m.revision < 0 || !Array.isArray(m.jobs) || m.jobs.length > 50 || !Array.isArray(m.providers) || m.providers.length > 10 || !Array.isArray(m.offers) || m.offers.length > 200 || !Array.isArray(m.selections) || m.selections.length > 50) return null;
+  if (m.id !== "local-marketplace" || ![1, 2, 3, 4].includes(m.schemaVersion) || !Number.isInteger(m.revision) || m.revision < 0 || !Array.isArray(m.jobs) || m.jobs.length > 50 || !Array.isArray(m.providers) || m.providers.length > 10 || !Array.isArray(m.offers) || m.offers.length > 200 || !Array.isArray(m.selections) || m.selections.length > 50) return null;
   const jobs: PreviewJob[] = [], providers: PreviewProvider[] = [], offers: PreviewOffer[] = [], selections: PreviewSelection[] = [];
   for (const job of m.jobs) {
     if (!job || !isDraftId(job.id) || job.sourceDraftId !== job.id || !positiveRevision(job.revision) || !positiveRevision(job.sourceRevision) || !date(job.publishedAt) || !["preview_published", "provider_selected"].includes(job.status)) return null;
@@ -80,6 +81,6 @@ export function parseMarketplace(value: unknown): Marketplace | null {
   // adaptation is non-destructive; persistence happens on the next explicit change.
   const deliveries = parseDeliveries(m.schemaVersion === 1 ? selections.map(createDelivery) : m.deliveries, selections);
   if (!deliveries) return null;
-  const result: Marketplace = { id: "local-marketplace", schemaVersion: 3, revision: m.revision, jobs, providers, offers, selections, activeProviderId: m.activeProviderId, deliveries, trust: emptyTrust() };
-  const trust = parseTrust(m.schemaVersion < 3 ? emptyTrust() : m.trust, result); if (!trust) return null; result.trust = trust; return result;
+  const result: Marketplace = { id: "local-marketplace", schemaVersion: 4, revision: m.revision, jobs, providers, offers, selections, activeProviderId: m.activeProviderId, deliveries, trust: emptyTrust(), operations: emptyOperations() };
+  const trust = parseTrust(m.schemaVersion < 3 ? emptyTrust() : m.trust, result); if (!trust) return null; result.trust = trust; const operations=parseOperations(m.schemaVersion<4?emptyOperations():m.operations,result);if(!operations)return null;result.operations=operations;return result;
 }

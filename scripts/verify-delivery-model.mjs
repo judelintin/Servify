@@ -26,7 +26,7 @@ const delivery = () => state.deliveries[0];
 const update = (actor, action, reason = "") => service.changeJobState(jobId, actor, delivery().revision, action, reason);
 async function rejected(task, message) { const before = structuredClone(state); await assert.rejects(task, MarketplaceError, message); assert.deepEqual(state, before, "Rejected action is atomic and leaves every record unchanged"); }
 const day = n => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10), windowFor = n => ({ date: day(n), startTime: "09:00", endTime: "11:00" });
-reset(); assert.equal(state.schemaVersion, 3); assert.equal(delivery().status, "awaiting_confirmation"); assert.equal(delivery().history.length, 1); assert.deepEqual(legacy, original); console.log("PASS non-destructive schema-1 adaptation; no inferred provider acceptance");
+reset(); assert.equal(state.schemaVersion, 4); assert.equal(delivery().status, "awaiting_confirmation"); assert.equal(delivery().history.length, 1); assert.deepEqual(legacy, original); console.log("PASS non-destructive schema-1 adaptation; no inferred provider acceptance");
 await rejected(() => update(customer, "confirm")); await rejected(() => update(other, "confirm")); await rejected(() => update(provider, "start")); await rejected(() => update(provider, "complete")); await rejected(() => update(provider, "decline", "short"));
 await update(provider, "confirm"); assert.equal(delivery().status, "confirmed"); await rejected(() => service.changeJobState(jobId, customer, 1, "cancel", "Synthetic stale cancellation"));
 await rejected(() => service.proposeSchedule(jobId, customer, delivery().revision, { date: "2000-01-01", startTime: "09:00", endTime: "11:00" }));

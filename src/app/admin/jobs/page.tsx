@@ -1,3 +1,2 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
-export const metadata = { title: "Jobs and offers operations" };
-export default function Page() { return <PlaceholderPage title="Jobs & offers" description="A place for authorized review of job activity and offer relationships."/>; }
+import {OperationsPage} from "@/features/operations/components";
+export default async function Page({searchParams}:{searchParams:Promise<{status?:string|string[]}>}){const {status}=await searchParams;return <OperationsPage view="jobs" initialFilter={typeof status==="string"?status:undefined}/>;}

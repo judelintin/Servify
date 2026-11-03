@@ -20,14 +20,14 @@ export const workspaceNavigation: Record<WorkspaceRole, { label: string; eyebrow
     { href: "/provider/verification", label: "Verification", icon: "shield" },
   ] },
   admin: { label: "Admin workspace", eyebrow: "Operations", items: [
-    { href: "/admin/dashboard", label: "Dashboard", icon: "grid" },
+    { href: "/admin/dashboard", label: "Overview", icon: "grid" },
     { href: "/admin/providers", label: "Providers", icon: "users" },
     { href: "/admin/verification", label: "Verification", icon: "shield" },
-    { href: "/admin/customers", label: "Customers", icon: "user" },
-    { href: "/admin/jobs", label: "Jobs & offers", icon: "jobs" },
+
+    { href: "/admin/jobs", label: "Jobs", icon: "jobs" },
     { href: "/admin/reviews", label: "Reviews & reports", icon: "offers" },
-    { href: "/admin/reports", label: "Reports & disputes", icon: "flag" },
-    { href: "/admin/categories", label: "Categories", icon: "categories" },
+    { href: "/admin/reports", label: "Issues", icon: "flag" },
+    { href: "/admin/activity", label: "Activity history", icon: "clock" },
   ] },
 };
 
