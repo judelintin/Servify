@@ -46,6 +46,7 @@ try {
     await go(p, "/customer/dashboard"); await p.getByRole("button", { name: "Completed 1", exact: true }).click(); await p.getByRole("link", { name: title, exact: true }).waitFor(); await layout(p, "dashboard-completed", width);
     if (width < 1024) { const menu = p.getByRole("button", { name: "Open workspace menu", exact: true }); await menu.focus(); await p.keyboard.press("Enter"); await p.keyboard.press("Escape"); assert(await menu.evaluate(e => e === document.activeElement)); } else { await p.getByRole("button", { name: "Collapse sidebar", exact: true }).click(); await p.reload({ waitUntil: "networkidle" }); await p.getByRole("button", { name: "Expand sidebar", exact: true }).click(); }
     await go(p, `/provider/messages/${jobId}`); assert.equal(await p.locator(".delivery-message").count(), 3); await layout(p, "conversation-after-completion", width);
+    if (process.env.SERVIFY_TRUST) await (await import("./verify-trust-flow.mjs")).run(p,jobId,width);
     results.push({ width, e2e: "pass", messaging: "pass", completion: "customer confirmed", overflow: false }); console.log(`PASS ${width}px: create → publish → offer → select → accept → schedule → start → messages → request completion → customer completion → reload`); await context.close();
   }
   assert.deepEqual(errors, [], "No console or runtime errors"); assert(requests.every(url => url.startsWith(base) || url.startsWith("data:")), "No remote requests"); await writeFile(`${output}/${process.env.SERVIFY_SMOKE ? "smoke-" : ""}results.json`, JSON.stringify({ results, errors }, null, 2));

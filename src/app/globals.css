@@ -308,3 +308,4 @@ p { overflow-wrap: anywhere; }
   .swatches { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.trust-stars{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.trust-stars label{cursor:pointer;padding:10px;border:1px solid #8992a6;border-radius:8px}.trust-stars label:has(:checked){background:#edf1fc;border-color:#3155c8}.trust-stars label:focus-within{outline:3px solid #3155c8;outline-offset:2px}

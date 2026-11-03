@@ -1,0 +1,1 @@
+import { Reviews } from "@/features/trust/components"; import { WorkspaceShell } from "@/components/shells/workspace-shell"; export default async function Page({params}:{params:Promise<{providerId:string}>}){const {providerId}=await params;return <WorkspaceShell role="customer"><Reviews providerId={providerId}/></WorkspaceShell>;}

@@ -25,6 +25,7 @@ export const workspaceNavigation: Record<WorkspaceRole, { label: string; eyebrow
     { href: "/admin/verification", label: "Verification", icon: "shield" },
     { href: "/admin/customers", label: "Customers", icon: "user" },
     { href: "/admin/jobs", label: "Jobs & offers", icon: "jobs" },
+    { href: "/admin/reviews", label: "Reviews & reports", icon: "offers" },
     { href: "/admin/reports", label: "Reports & disputes", icon: "flag" },
     { href: "/admin/categories", label: "Categories", icon: "categories" },
   ] },
