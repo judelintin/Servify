@@ -1,0 +1,3 @@
+import { colors as c } from '../../theme/tokens';
+import { EmptyState, Page, PreviewNotice, Type } from '../../ui/primitives';
+export default function Messages() { return <Page title="Messages"><Type variant="title" accessibilityRole="header" style={{ marginTop: 20 }}>The details,{`\n`}kept together.</Type><Type color={c.muted} style={{ marginTop: 14, marginBottom: 28 }}>Future conversations will be linked to a selected job.</Type><EmptyState icon="message-circle" title="A quiet start." description="Messaging is not connected in this stage. No conversations are delivered, and website messages do not sync to this app."/><PreviewNotice/></Page>; }

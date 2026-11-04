@@ -10,3 +10,5 @@ next-env.d.ts
 *.log
 .DS_Store
 artifacts/
+apps/mobile/.expo/
+apps/mobile/dist/
