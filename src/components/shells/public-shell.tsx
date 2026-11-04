@@ -1,21 +1,10 @@
 "use client";
-
+import "@/features/marketing/marketing.css";
 import Link from "next/link";
-import { useRef, useState, type ReactNode } from "react";
-import { Brand } from "@/components/brand";
-import { Icon } from "@/components/ui/icon";
-import { ButtonLink, PreviewNote } from "@/components/ui/primitives";
-
-export function SectionContainer({ children, className = "" }: { children: ReactNode; className?: string }) { return <div className={`container ${className}`}>{children}</div>; }
-export function PublicShell({ children }: { children: ReactNode }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const toggle = useRef<HTMLButtonElement>(null);
-  return <div className="public-shell" onKeyDown={(event) => { if (event.key === "Escape" && menuOpen) { setMenuOpen(false); toggle.current?.focus(); } }}>
-    <SectionContainer>
-      <header className="public-header"><Brand/><nav className="public-nav" aria-label="Public navigation"><Link href="/customer/dashboard">For customers</Link><Link href="/provider/dashboard">For professionals</Link><Link href="/auth/sign-in">Sign in</Link><ButtonLink href="/jobs/new" icon="arrow">Post a job</ButtonLink></nav><button ref={toggle} className="icon-button public-menu-button" type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-controls="public-mobile-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Icon name={menuOpen ? "close" : "menu"}/></button></header>
-      {menuOpen && <nav id="public-mobile-navigation" className="public-mobile-nav" aria-label="Public mobile navigation">{[{ href: "/customer/dashboard", label: "For customers" }, { href: "/provider/dashboard", label: "For professionals" }, { href: "/auth/sign-in", label: "Sign in" }, { href: "/jobs/new", label: "Post a job" }].map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</Link>)}</nav>}
-    </SectionContainer>
-    <main id="main-content" tabIndex={-1}>{children}</main>
-    <SectionContainer><footer className="public-footer"><div><Brand/><p>Find the right person. Get it done.</p></div><nav aria-label="Footer navigation"><Link href="/customer/dashboard">Customer workspace</Link><Link href="/provider/dashboard">Servify for Pros</Link><Link href="/design-system">Design system</Link></nav></footer><div className="public-preview-footer"><PreviewNote/></div></SectionContainer>
-  </div>;
-}
+import {useRef,useState,type ReactNode} from "react";
+import {Brand} from "@/components/brand";
+import {Icon} from "@/components/ui/icon";
+import {ButtonLink} from "@/components/ui/primitives";
+export function SectionContainer({children,className=""}:{children:ReactNode;className?:string}){return <div className={`container ${className}`}>{children}</div>;}
+const links=[{href:"/#services",label:"Explore Services"},{href:"/#how-it-works",label:"How It Works"},{href:"/#professionals",label:"For Professionals"},{href:"/customer/dashboard",label:"Your workspace"}];
+export function PublicShell({children}:{children:ReactNode}){const [open,setOpen]=useState(false),toggle=useRef<HTMLButtonElement>(null);return <div className="public-shell marketing-shell" onKeyDown={e=>{if(e.key==="Escape"&&open){setOpen(false);toggle.current?.focus();}}}><header className="home-header home-wrap"><Brand/><nav aria-label="Public navigation" className="home-desktop-nav">{links.map(link=><Link key={link.href} href={link.href}>{link.label}</Link>)}</nav><div className="home-header-actions"><ButtonLink href="/jobs/new" icon="arrow">Post a Job</ButtonLink><button ref={toggle} type="button" className="icon-button home-menu" aria-label={open?"Close menu":"Open menu"} aria-expanded={open} aria-controls="home-mobile-menu" onClick={()=>setOpen(!open)}><Icon name={open?"close":"menu"}/></button></div>{open&&<nav className="home-mobile-menu" id="home-mobile-menu" aria-label="Public mobile navigation">{links.map(link=><Link key={link.href} href={link.href} onClick={()=>setOpen(false)}>{link.label}<span aria-hidden="true">↗</span></Link>)}</nav>}</header><main id="main-content" tabIndex={-1}>{children}</main><footer className="home-footer home-wrap"><div className="home-footer-grid"><div><Brand/><p>Find the right person.<br/>Get it done.</p><span className="home-small">Local skills. Starting with Ibadan.</span></div><nav aria-label="Explore Servify"><h2>MAKE A START</h2><Link href="/#services">Explore services</Link><Link href="/jobs/new">Post a job</Link><Link href="/#how-it-works">How it works</Link><Link href="/customer/dashboard">Customer workspace</Link></nav><nav aria-label="For professionals"><h2>FOR PROFESSIONALS</h2><Link href="/provider/onboarding">Join as a Pro</Link><Link href="/provider/dashboard">Provider workspace</Link><Link href="/#questions">Questions & answers</Link><Link href="/#preview">About this preview</Link></nav></div><div className="home-footer-bottom"><span>© 2026 Servify · Find the right person. Get it done.</span><span>Editorial photography: <a href="https://www.pexels.com/photo/an-electrician-repairing-a-fuse-box-8005368/">E. Ikwuegbu</a>, <a href="https://www.pexels.com/photo/black-woman-wiping-table-with-napkin-in-morning-5331102/">Monstera</a> & <a href="https://www.pexels.com/photo/carpenter-working-with-planks-16850260/">Safari Consoler</a> / Pexels</span></div><p className="home-small">Local product preview. No live marketplace, authenticated accounts or real bookings. Launch coverage and policies are still being confirmed.</p></footer></div>;}

@@ -16,18 +16,18 @@ import { useMarketplace } from "@/features/marketplace/use-marketplace";
 const stepTitles = ["What needs a little attention?", "Tell us a little about the job.", "A photo can make it clearer.", "Where in Ibadan is the job?", "When would you like a hand?", "What do you have in mind?", "Your request, at a glance."];
 const stepDescriptions = ["Choose the closest match. You can always change it later.", "A clear description helps you prepare a more useful request.", "Optional, but useful for showing the problem or the space.", "A general service area is enough. No house number or exact address.", "This is your preference, not a promise of provider availability.", "Add a budget range, or leave room for providers to quote in a future stage.", "Take a moment to check the details. This saves a local draft; it doesn’t publish a job."];
 
-export function JobWizard({ draftId }: { draftId?: string }) {
+export function JobWizard({ draftId, initialCategory }: { draftId?: string; initialCategory?: string }) {
   const state = useLocalDrafts();
   if (!state.ready) return <><PageHeading title="Post a job"/><LoadingState label="Preparing your local draft…"/></>;
   const existing = draftId ? state.drafts.find((item) => item.id === draftId) : undefined;
   if (draftId && !existing) return <><PageHeading title="Draft not found"/><DraftStorageNotice hideError/><DraftMissing/></>;
-  return <DraftEditor key={draftId ?? "new"} initialDraft={existing} temporary={state.mode === "memory"}/>;
+  return <DraftEditor key={draftId ?? "new"} initialDraft={existing} initialCategory={customerCategories.some(c=>c.slug===initialCategory)?initialCategory:undefined} temporary={state.mode === "memory"}/>;
 }
 
-function DraftEditor({ initialDraft, temporary }: { initialDraft?: LocalDraft; temporary: boolean }) {
+function DraftEditor({ initialDraft, temporary, initialCategory }: { initialDraft?: LocalDraft; temporary: boolean; initialCategory?: string }) {
   const router = useRouter(); const market = useMarketplace();
   const [identity] = useState(() => ({ id: initialDraft?.id ?? crypto.randomUUID(), createdAt: initialDraft?.createdAt ?? new Date().toISOString() }));
-  const [content, setContent] = useState<DraftContent>(() => initialDraft?.content ?? emptyContent());
+  const [content, setContent] = useState<DraftContent>(() => initialDraft?.content ?? { ...emptyContent(), category: initialCategory ?? "" });
   const [step, setStep] = useState(initialDraft?.lastStep ?? 0);
   const [visited, setVisited] = useState(initialDraft?.lastStep ?? 0);
   const [errors, setErrors] = useState<DraftErrors>({});

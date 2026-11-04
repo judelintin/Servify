@@ -53,7 +53,7 @@ try {
     assert.match(html, /<h1\b/, `${route}: page heading`);
     assert.match(html, /id="main-content"/, `${route}: main landmark`);
     assert.match(html, /Skip to content/, `${route}: skip link`);
-    assert.match(html, /Marketplace services are not available yet|Local prototype · Records stay in this browser/, `${route}: preview disclosure`);
+    assert.match(html, /Marketplace services are not available yet|Local prototype · Records stay in this browser|Local product preview\. No live marketplace/, `${route}: preview disclosure`);
     assert.doesNotMatch(html, /<form[^>]*action=["']https?:/i, `${route}: no external form submission`);
     console.log(`PASS ${route}`);
   }
