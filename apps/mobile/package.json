@@ -17,7 +17,9 @@
     "verify:requests": "node scripts/verify-requests.mjs",
     "verify:requests-browser": "node scripts/verify-requests-browser.mjs",
     "verify:professional": "node scripts/verify-professional.mjs",
-    "verify:professional-browser": "node scripts/verify-professional-browser.mjs"
+    "verify:professional-browser": "node scripts/verify-professional-browser.mjs",
+    "verify:marketplace": "node scripts/verify-marketplace.mjs",
+    "verify:marketplace-browser": "node scripts/verify-marketplace-browser.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-export type PhotoNamespace='requests'|'professional';
-const prefix=(namespace:PhotoNamespace)=>namespace==='professional'?'servify.mobile.professional.photo.':'servify.mobile.photo.';
+export type PhotoNamespace='requests'|'professional'|'marketplace';
+const prefix=(namespace:PhotoNamespace)=>namespace==='marketplace'?'servify.mobile.marketplace.photo.':namespace==='professional'?'servify.mobile.professional.photo.':'servify.mobile.photo.';
 /** Web preview fallback: durable JPEG data in the established storage port, never picker blob URLs. */
 export async function keepPhoto(id:string,uri:string,namespace:PhotoNamespace='requests'){const response=await fetch(uri);const blob=await response.blob();if(!blob.size||blob.size>1024*1024)throw Error('The compressed photo must be under 1 MB. Choose a smaller image.');const data=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error('Photo could not be read.'));reader.readAsDataURL(blob);});await AsyncStorage.setItem(prefix(namespace)+id,JSON.stringify({createdAt:Date.now(),data}));}
 export async function photoUri(id:string,namespace:PhotoNamespace='requests'){const raw=await AsyncStorage.getItem(prefix(namespace)+id);if(!raw)throw Error('Photo is unavailable in this browser.');return JSON.parse(raw).data as string;}
