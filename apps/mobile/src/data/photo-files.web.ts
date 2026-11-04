@@ -1,0 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+const prefix='servify.mobile.photo.';
+/** Web preview fallback: durable JPEG data in the established storage port, never picker blob URLs. */
+export async function keepPhoto(id:string,uri:string){const response=await fetch(uri);const blob=await response.blob();if(!blob.size||blob.size>1024*1024)throw Error('The compressed photo must be under 1 MB. Choose a smaller image.');const data=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error('Photo could not be read.'));reader.readAsDataURL(blob);});await AsyncStorage.setItem(prefix+id,JSON.stringify({createdAt:Date.now(),data}));}
+export async function photoUri(id:string){const raw=await AsyncStorage.getItem(prefix+id);if(!raw)throw Error('Photo is unavailable in this browser.');return JSON.parse(raw).data as string;}
+export async function removePhoto(id:string){await AsyncStorage.removeItem(prefix+id);}
+export async function cleanPhotos(referenced:Set<string>){for(const key of await AsyncStorage.getAllKeys()){if(!key.startsWith(prefix)||referenced.has(key.slice(prefix.length)))continue;try{const raw=await AsyncStorage.getItem(key);if(raw&&JSON.parse(raw).createdAt<Date.now()-7*86400000)await AsyncStorage.removeItem(key);}catch{/* Preserve unreadable files rather than guessing ownership. */}}}

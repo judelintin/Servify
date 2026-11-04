@@ -1,0 +1,22 @@
+import { emptyContent, newId, parseRequests, type Content, type RequestDraft } from '../domain/requests';
+import { parsePreview } from '../domain/preview';
+import { PREVIEW_KEY, type StoragePort } from './store-core';
+export const REQUEST_KEY='servify.mobile.requests.v1';
+type Snapshot={ready:boolean;drafts:RequestDraft[];storage:'device'|'session';saving:boolean;message:string|null};
+export function createRequestStore(storage:StoragePort,timeout=4000){
+  const initial:Snapshot={ready:false,drafts:[],storage:'device',saving:false,message:null};let state=initial,hydration:Promise<void>|undefined,queue=Promise.resolve(),pending=0,baseline:string|null=null,blocked=false;
+  const listeners=new Set<()=>void>();const publish=(patch:Partial<Snapshot>)=>{state={...state,...patch};listeners.forEach(l=>l());};
+  function bounded<T>(p:Promise<T>):Promise<T>{return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Storage timed out.')),timeout);p.then(v=>{clearTimeout(timer);resolve(v);},e=>{clearTimeout(timer);reject(e);});});}
+  const serialize=()=>JSON.stringify({schemaVersion:1,drafts:state.drafts});
+  function hydrate(){return hydration??=(async()=>{try{baseline=await bounded(storage.getItem(REQUEST_KEY));let drafts:RequestDraft[];
+    if(baseline!==null){try{drafts=parseRequests(baseline);}catch(e){blocked=true;throw e;}}
+    else{const legacy=await bounded(storage.getItem(PREVIEW_KEY));try{drafts=legacy?parsePreview(legacy).starters.map(s=>({id:s.id,revision:1,createdAt:s.createdAt,updatedAt:s.updatedAt,status:'draft',lastStep:0,reviewed:false,content:{...emptyContent(),category:s.category}})):[];}catch(e){blocked=true;throw e;}}
+    publish({ready:true,drafts});
+  }catch{publish({ready:true,storage:'session',message:'Saved data could not be read. Existing records are untouched. Changes stay in this session; retry storage before closing.'});}})();}
+  function persist(){pending++;publish({saving:true});const raw=serialize();let saved=false;const work=queue.then(async()=>{if(state.storage==='device'){try{const current=await bounded(storage.getItem(REQUEST_KEY));if(current!==baseline)throw Error('Another app window changed these drafts.');await bounded(storage.setItem(REQUEST_KEY,raw));baseline=raw;saved=true;}catch{publish({storage:'session',message:'Draft changes are in this session only. Storage failed or another window changed these records. Retry before closing; existing disk data will not be overwritten.'});}}pending--;publish({saving:pending>0});});queue=work.catch(()=>{});return work.then(()=>saved);}
+  return {getSnapshot:()=>state,getServerSnapshot:()=>initial,subscribe:(l:()=>void)=>{listeners.add(l);return()=>{listeners.delete(l);};},hydrate,
+    async save(content:Content,lastStep:number,id?:string,revision?:number,reviewed=false){if(!state.ready)throw Error('Drafts are still loading.');const previous=id?state.drafts.find(d=>d.id===id):undefined;if(id&&!previous)throw Error('This draft was removed. Return to My Jobs.');if(previous&&previous.revision!==revision)throw Error('This draft changed in another screen. Reopen it from My Jobs before editing.');if(!previous&&state.drafts.length>=50)throw Error('You have 50 drafts. Remove an unused draft first.');const now=new Date().toISOString();const draft:RequestDraft={id:previous?.id??newId(),revision:(previous?.revision??0)+1,createdAt:previous?.createdAt??now,updatedAt:now,status:'draft',lastStep,reviewed,content:JSON.parse(JSON.stringify(content))};parseRequests(JSON.stringify({schemaVersion:1,drafts:[draft]}));publish({drafts:previous?state.drafts.map(d=>d.id===id?draft:d):[draft,...state.drafts]});const saved=await persist();return{draft,saved};},
+    async remove(id:string,revision:number){const previous=state.drafts.find(d=>d.id===id);if(!previous||previous.revision!==revision)throw Error('This draft changed. Reopen it before deleting.');publish({drafts:state.drafts.filter(d=>d.id!==id)});return persist();},
+    async retry(){await queue;if(blocked){publish({message:'Stored data is malformed or unsupported and has been preserved. Export/copy session details before closing; automatic replacement is disabled.'});return false;}try{const raw=await bounded(storage.getItem(REQUEST_KEY));if(raw!==baseline)throw Error('Stored records changed.');publish({storage:'device',message:null});return await persist();}catch{publish({storage:'session',message:'Storage is still unavailable or has changed elsewhere. Keep this session open; no existing disk records were replaced.'});return false;}},
+  };
+}

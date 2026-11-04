@@ -1,22 +1,24 @@
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, View } from 'react-native';
+import { useRequests } from '../../data/requests';
 import { usePreview } from '../../data/preview-store';
 import { colors as c } from '../../theme/tokens';
 import { Pressable, Badge, Button, EmptyState, Icon, Page, PreviewNotice, SectionHeader, Type } from '../../ui/primitives';
 import { WorkspaceHeader } from '../../ui/navigation';
 import { ServiceGrid } from '../../ui/service-card';
+import { StorageNotice } from '../../ui/request-parts';
 import { JobCard } from '../../ui/job-card';
 import { professionalGuidance } from '../../ui/professional-guidance';
 
 export default function Home() { const { data } = usePreview(); return data.mode === 'customer' ? <CustomerHome/> : <ProfessionalHome/>; }
 function CustomerHome() {
-  const router = useRouter(), { data } = usePreview();
+  const router = useRouter(), { drafts } = useRequests();
   return <Page><WorkspaceHeader/><View style={s.intro}><View style={s.local}><View style={s.dot}/><Type variant="eyebrow" color={c.muted}>IBADAN FIRST · LOCAL PREVIEW</Type></View><Type variant="title" accessibilityRole="header" style={{ marginTop: 12 }}>Let’s get{`\n`}things done.</Type><Type color={c.muted} style={{ marginTop: 12 }}>A little help for the fixes, fresh starts{`\n`}and everyday to-dos.</Type></View>
     <View style={s.hero}><View style={s.heroCopy}><Type variant="eyebrow" color="#C4D0F4" style={{ fontSize: 8 }}>YOUR REQUEST. YOUR CHOICE.</Type><Type variant="heading" color={c.white} style={{ marginTop: 14, fontSize: 27, lineHeight: 29 }}>Good help starts{`\n`}with a clear brief.</Type><Button label="Post a job" icon="arrow-up-right" onPress={() => router.push('/post-job')} variant="light" style={{ marginTop: 22, alignSelf: 'flex-start', paddingHorizontal: 16 }}/></View><View style={s.heroImage}><Image source={require('../../../assets/images/electrician.jpg')} style={s.image} resizeMode="cover" accessible accessibilityLabel="Editorial photograph of an electrician at work; not a listed Servify provider"/></View></View>
     <Type variant="caption" color={c.muted} style={{ fontSize: 9, marginTop: 8 }}>Editorial photograph · not a listed provider</Type>
     <View style={s.section}><SectionHeader title="What do you need?"/><ServiceGrid onSelect={category => router.push({ pathname: '/post-job', params: { category } })}/><Type variant="caption" color={c.muted} style={{ fontSize: 10, marginTop: 12 }}>Preview services. Launch coverage is still being confirmed.</Type></View>
-    <View style={s.section}><SectionHeader title="Your requests" action="View all" onAction={() => router.push('/jobs')}/>{data.starters.length ? data.starters.slice(0,2).map(item => <JobCard key={item.id} starter={item}/>) : <EmptyState compact icon="file-text" title="A fresh start awaits." description="Your request starters will live here. Pick a service to make a start." action="Start your first request" onAction={() => router.push('/post-job')}/>}</View>
-    <View style={s.tip}><View style={s.tipIcon}><Icon name="sun" size={20} color="#845512"/></View><View style={{ flex: 1 }}><Type style={{ fontWeight: '600' }}>A clearer brief goes a long way.</Type><Type variant="caption" color={c.muted} style={{ marginTop: 5 }}>The full journey will help you describe the work, add photos and compare offers.</Type></View></View><PreviewNotice/>
+    <View style={s.section}><SectionHeader title="Your requests" action="View all" onAction={() => router.push('/jobs')}/>{drafts.length ? [...drafts].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,2).map(item => <JobCard key={item.id} draft={item}/>) : <EmptyState compact icon="file-text" title="A fresh start awaits." description="Your local drafts will live here. Pick a service to make a start." action="Start your first request" onAction={() => router.push('/post-job')}/>}</View>
+    <View style={s.tip}><View style={s.tipIcon}><Icon name="sun" size={20} color="#845512"/></View><View style={{ flex: 1 }}><Type style={{ fontWeight: '600' }}>A clearer brief goes a long way.</Type><Type variant="caption" color={c.muted} style={{ marginTop: 5 }}>Describe the work and add useful photos. Save locally and return whenever you’re ready.</Type></View></View><StorageNotice/>
   </Page>;
 }
 function ProfessionalHome() {

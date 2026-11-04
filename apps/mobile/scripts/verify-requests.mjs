@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {load,root,resolve} from './domain-loader.mjs';
+const {createRequestStore,REQUEST_KEY}=load(resolve(root,'src/data/request-core.ts'));
+const {PREVIEW_KEY}=load(resolve(root,'src/data/store-core.ts'));
+const {areas,emptyContent,validate,parseRequests,amount}=load(resolve(root,'src/domain/requests.ts'));
+const web=load(resolve(root,'../../src/features/customer/config.ts'));
+assert.deepEqual(areas.map(([slug,label])=>({slug,label})),[...web.customerAreas]);
+const legacy=JSON.stringify({schemaVersion:1,mode:'provider',starters:[{id:'legacy-starter-01',category:'plumbing',stage:'service_selected',createdAt:'2026-01-01T00:00:00Z',updatedAt:'2026-01-02T00:00:00Z'}]});
+const disk=new Map([[PREVIEW_KEY,legacy]]);let fail=false;
+const port={getItem:async k=>disk.get(k)??null,setItem:async(k,v)=>{if(fail)throw Error('Quota');disk.set(k,v);}};
+const store=createRequestStore(port);await store.hydrate();assert.equal(store.getSnapshot().drafts[0].id,'legacy-starter-01');assert.equal(disk.get(PREVIEW_KEY),legacy);assert(!disk.has(REQUEST_KEY),'Hydration does not rewrite legacy data');
+let first=await store.save({...emptyContent(),category:'electrical'},1);assert(first.saved);const id=first.draft.id;
+let changed=await store.save({...first.draft.content,title:'Repair kitchen lighting'},2,id,first.draft.revision);assert.equal(changed.draft.createdAt,first.draft.createdAt);assert.equal(store.getSnapshot().drafts.length,2);
+await assert.rejects(store.save(first.draft.content,1,id,first.draft.revision),/changed/);
+const restarted=createRequestStore(port);await restarted.hydrate();assert.equal(restarted.getSnapshot().drafts.find(d=>d.id===id).lastStep,2);
+fail=true;let failed=await restarted.save({...changed.draft.content,description:'Session text retained'},2,id,changed.draft.revision);assert(!failed.saved);assert.equal(restarted.getSnapshot().storage,'session');assert.equal(restarted.getSnapshot().drafts.find(d=>d.id===id).content.description,'Session text retained');fail=false;assert(await restarted.retry());assert.equal(parseRequests(disk.get(REQUEST_KEY)).find(d=>d.id===id).content.description,'Session text retained');
+await restarted.remove(id,failed.draft.revision);const afterDelete=createRequestStore(port);await afterDelete.hydrate();assert.equal(afterDelete.getSnapshot().drafts.length,1);assert.equal(disk.get(PREVIEW_KEY),legacy);
+disk.set(REQUEST_KEY,JSON.stringify({schemaVersion:1,drafts:[]}));let stale=await afterDelete.save(emptyContent(),0);assert(!stale.saved);assert(!(await afterDelete.retry()));assert.equal(parseRequests(disk.get(REQUEST_KEY)).length,0,'External change is never overwritten');
+for(const raw of ['{broken',JSON.stringify({schemaVersion:9,drafts:[]})]){let writes=0;const bad=createRequestStore({getItem:async k=>k===REQUEST_KEY?raw:null,setItem:async()=>{writes++;}});await bad.hydrate();assert(bad.getSnapshot().ready);await bad.save(emptyContent(),0);assert(!(await bad.retry()));assert.equal(writes,0);}
+const denied=createRequestStore({getItem:async()=>{throw Error('Denied');},setItem:async()=>{throw Error('Denied');}});await denied.hydrate();assert(!(await denied.save(emptyContent(),0)).saved);assert(denied.getSnapshot().ready);
+const stalled=createRequestStore({getItem:async()=>null,setItem:()=>new Promise(()=>{})},15);await stalled.hydrate();const interrupted=await stalled.save(emptyContent(),0);assert(!interrupted.saved);assert.equal(stalled.getSnapshot().drafts.length,1);
+const c=emptyContent();for(const s of [0,1,3,4,5])assert(Object.keys(validate(c,s)).length);assert.deepEqual(validate(c,2),{});
+assert.equal(amount('0'),null);assert.equal(amount('-1'),null);assert.equal(amount('1e5'),null);assert.equal(amount('100000001'),null);assert.equal(amount('10.999'),null);assert.equal(amount('10.50'),1050);
+assert(validate({...c,timing:'date',preferredDate:'2020-01-01'},4).preferredDate);assert(validate({...c,timing:'date',preferredDate:'2030-02-30'},4).preferredDate);assert.deepEqual(validate({...c,timing:'date',preferredDate:'2030-02-20'},4),{});
+assert(validate({...c,budgetMode:'range',budgetMin:'20',budgetMax:'10'},5).budgetMax);assert.deepEqual(validate({...c,budgetMode:'quotes'},5),{});
+console.log('PASS Stage 02: legacy preservation, area parity, multiple IDs, edit/restart/delete, revision conflicts, external writes, session retention/retry, malformed data, denied/interrupted storage, dates and amounts');

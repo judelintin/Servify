@@ -1,12 +1,7 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { categoryById } from '../domain/catalog';
-import type { RequestStarter } from '../domain/preview';
-import { usePreview } from '../data/preview-store';
+import { categoryById, isCategory } from '../domain/catalog';
+import { areaLabel, firstIncomplete, type RequestDraft } from '../domain/requests';
 import { colors as c } from '../theme/tokens';
 import { Pressable, Badge, Icon, Type } from './primitives';
-export function JobCard({ starter }: { starter: RequestStarter }) {
-  const router = useRouter(), category = categoryById(starter.category), { storage } = usePreview();
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${category.label} request starter. Service selected, not posted. Edit service.`} onPress={() => router.push({ pathname: '/post-job', params: { id: starter.id } })} style={({ pressed }) => [styles.card, pressed && { opacity: .75 }]}><View style={styles.icon}><Icon name={category.icon} color={c.blue}/></View><View style={{ flex: 1, gap: 8 }}><Type style={{ fontWeight: '600' }}>{category.label} request</Type><Badge tone="neutral">Service selected · not posted</Badge><Type variant="caption" color={c.muted}>Step 1 of 7 · {storage === 'device' ? 'saved on device' : 'this session only'}</Type></View><Icon name="chevron-right" color={c.muted} size={18}/></Pressable>;
-}
-const styles = StyleSheet.create({ card: { backgroundColor: c.white, borderWidth: 1, borderColor: c.line, borderRadius: 16, padding: 18, gap: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 12 }, icon: { width: 40, height: 40, borderRadius: 13, backgroundColor: c.paleBlue, alignItems: 'center', justifyContent: 'center' } });
+export function JobCard({draft}:{draft:RequestDraft}){const router=useRouter(),category=isCategory(draft.content.category)?categoryById(draft.content.category):undefined;return <Pressable accessibilityRole="button" accessibilityLabel={`View draft: ${draft.content.title.trim()||`${category?.label??'Untitled'} request`}`} onPress={()=>router.push({pathname:'/post-job/details',params:{id:draft.id}})} style={({pressed})=>[{backgroundColor:c.white,borderWidth:1,borderColor:c.line,borderRadius:16,padding:18,gap:14,flexDirection:'row',alignItems:'center',marginBottom:12},pressed&&{opacity:.75}]}><View style={{width:40,height:40,borderRadius:13,backgroundColor:c.paleBlue,alignItems:'center',justifyContent:'center'}}><Icon name={category?.icon??'file-text'} color={c.blue}/></View><View style={{flex:1,gap:7}}><Type style={{fontWeight:'600'}}>{draft.content.title.trim()||`${category?.label??'Untitled'} request`}</Type><Type variant="caption" color={c.muted}>{category?.label??'Service not selected'} · {areaLabel(draft.content.area)}</Type><Badge tone="neutral">Draft · not posted</Badge><Type variant="caption" color={c.muted}>{firstIncomplete(draft.content)===6?'Ready to review':`Step ${draft.lastStep+1} of 7`} · {new Intl.DateTimeFormat('en-NG',{day:'numeric',month:'short'}).format(new Date(draft.updatedAt))}</Type></View><Icon name="chevron-right" color={c.muted} size={18}/></Pressable>;}
