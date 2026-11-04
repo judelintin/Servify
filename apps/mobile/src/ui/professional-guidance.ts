@@ -1,12 +1,12 @@
-/** Presentation policy only. Stage 01 has no editable or completed professional profiles. */
+/** Local profile completion never implies marketplace verification or approval. */
 export function professionalGuidance(profileComplete: boolean) {
   return profileComplete ? {
-    action: 'Find jobs', href: '/jobs', icon: 'search',
-    prompt: 'Explore requests relevant to your services and areas.',
-    note: 'Job discovery is not connected in this preview.',
+    action: 'View your profile', href: '/profile', icon: 'arrow-up-right',
+    prompt: 'Your professional introduction is ready on this device.',
+    note: 'Required details complete · not verified or published.',
   } as const : {
     action: 'Complete your profile', href: '/professional-setup', icon: 'arrow-up-right',
-    prompt: 'Next: Professional introduction.',
-    note: 'Setup preview · editing comes in a later stage.',
+    prompt: 'Introduce yourself, your services and the work you do.',
+    note: 'Local profile only · verification is not yet available.',
   } as const;
 }

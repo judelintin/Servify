@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {load,root,resolve} from './domain-loader.mjs';
+const {createProfessionalStore,PROFESSIONAL_KEY}=load(resolve(root,'src/data/professional-core.ts'));
+const {emptyProfessional,completeness,nextProfessionalStep,parseProfessional,validateProfessional,specializations}=load(resolve(root,'src/domain/professional.ts'));
+const webText=(await import('node:fs')).readFileSync(resolve(root,'../../src/features/provider/config.ts'),'utf8');
+for(const values of Object.values(specializations))for(const value of values)assert(webText.includes(JSON.stringify(value)),`Web specialization parity: ${value}`);
+const c=emptyProfessional();assert.equal(completeness(c).percent,0);assert.equal(nextProfessionalStep(c),0);
+for(const step of [0,1,2,3])assert(Object.keys(validateProfessional(c,step)).length);
+assert.deepEqual(validateProfessional(c,4),{});assert(validateProfessional({...c,experience:'61',categories:['plumbing']},1).experience);assert.deepEqual(validateProfessional({...c,experience:'0',categories:['plumbing']},1),{});
+const complete={...c,type:'individual',name:'Synthetic Professional',categories:['plumbing'],experience:'4',areas:['bodija'],bio:'Synthetic introduction describing careful plumbing repairs and useful experience.'};
+assert.equal(nextProfessionalStep(complete),5);assert.equal(completeness(complete).percent,67);assert(completeness(complete).requiredComplete);
+const portfolio=[{id:'project-example-01',title:'Kitchen pipe repair',description:'Synthetic project',category:'plumbing',photo:{id:'project-photo-01',alt:'Synthetic work example'}}];
+const full={...complete,photo:{id:'profile-photo-01',alt:'Synthetic portrait'},portfolio};assert.equal(completeness(full).percent,100);assert(completeness({...full,portfolio:[{...portfolio[0],photo:null}]}).requiredComplete);assert.equal(completeness({...full,portfolio:[{...portfolio[0],photo:null}]}).percent,83);assert(validateProfessional({...full,portfolio:[{...portfolio[0],title:''}]},4).portfolio);
+const disk=new Map([['servify.mobile.requests.v1','Customer data untouched'],['servify.mobile.preview.v1','Mode untouched']]);let fail=false;
+const port={getItem:async k=>disk.get(k)??null,setItem:async(k,v)=>{assert.equal(k,PROFESSIONAL_KEY);if(fail)throw Error('Denied');disk.set(k,v);}};
+const store=createProfessionalStore(port);await store.hydrate();assert(store.getSnapshot().ready);assert.equal(store.getSnapshot().profile,null);assert.equal(disk.size,2);
+const first=await store.save(full,5,0,true);assert(first.saved);assert(first.profile.reviewed);assert.equal(parseProfessional(JSON.stringify({...first.profile,content:{...full,portfolio:[{...portfolio[0],photo:null}]},verified:true})).verified,undefined);
+await assert.rejects(store.save(c,0,0),/changed/);const restarted=createProfessionalStore(port);await restarted.hydrate();assert.deepEqual(restarted.getSnapshot().profile.content,full);
+fail=true;const updated=await restarted.save({...full,name:'Changed name'},0,first.profile.revision);assert(!updated.saved);assert.equal(restarted.getSnapshot().profile.content.name,'Changed name');fail=false;assert(await restarted.retry());assert.equal(parseProfessional(disk.get(PROFESSIONAL_KEY)).content.name,'Changed name');
+assert.equal(disk.get('servify.mobile.requests.v1'),'Customer data untouched');assert.equal(disk.get('servify.mobile.preview.v1'),'Mode untouched');
+disk.set(PROFESSIONAL_KEY,JSON.stringify({...updated.profile,revision:updated.profile.revision+1}));assert(!(await restarted.save(full,5,updated.profile.revision)).saved);assert(!(await restarted.retry()));assert.equal(parseProfessional(disk.get(PROFESSIONAL_KEY)).revision,updated.profile.revision+1);
+for(const raw of ['{bad',JSON.stringify({schemaVersion:9}),JSON.stringify({...first.profile,content:{...full,portfolio:[...portfolio,...portfolio]}})]){let writes=0;const broken=createProfessionalStore({getItem:async()=>raw,setItem:async()=>{writes++;}});await broken.hydrate();assert(broken.getSnapshot().ready);await broken.save(c,0,0);assert.equal(broken.getSnapshot().storage,'session');assert(!(await broken.retry()));assert.equal(writes,0);}
+const denied=createProfessionalStore({getItem:async()=>{throw Error('Denied');},setItem:async()=>{throw Error('Denied');}});await denied.hydrate();assert(!(await denied.save(c,0,0)).saved);assert.equal(denied.getSnapshot().profile.content.name,'');
+const stalled=createProfessionalStore({getItem:async()=>null,setItem:()=>new Promise(()=>{})},15);await stalled.hydrate();assert(!(await stalled.save(c,0,0)).saved);assert(stalled.getSnapshot().ready);
+assert.throws(()=>parseProfessional(JSON.stringify({...first.profile,content:{...full,name:'x'.repeat(101)}})));assert.throws(()=>parseProfessional(JSON.stringify({...first.profile,content:{...full,photo:portfolio[0].photo}})));assert.throws(()=>parseProfessional(JSON.stringify({...first.profile,content:c})));
+console.log('PASS professional validation, web specialization parity, completeness/optional extras, finish/edit/restart, revisions, external writes, customer/mode independence, malformed/denied/interrupted storage and retry');

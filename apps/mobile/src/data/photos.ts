@@ -1,9 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { newId, type Photo } from '../domain/requests';
-import { keepPhoto, removePhoto } from './photo-files';
+import { keepPhoto, removePhoto, type PhotoNamespace } from './photo-files';
 
-export async function selectPhotos(limit:number):Promise<Photo[]>{
+export async function selectPhotos(limit:number,namespace:PhotoNamespace='requests'):Promise<Photo[]>{
   // The modern system photo picker grants scoped access without broad library permission.
   const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],allowsMultipleSelection:limit>1,selectionLimit:limit,quality:1});
   if(result.canceled)return [];
@@ -16,6 +16,6 @@ export async function selectPhotos(limit:number):Promise<Photo[]>{
     const context=ImageManipulator.manipulate(asset.uri);const longest=Math.max(asset.width,asset.height);if(longest>1600)context.resize(asset.width>=asset.height?{width:1600}:{height:1600});
     const image=await context.renderAsync();let rendered;
     try{rendered=await image.saveAsync({format:SaveFormat.JPEG,compress:.78});}finally{image.release();context.release();}
-    const id=newId();await keepPhoto(id,rendered.uri);kept.push({id,alt:'Customer-supplied photograph of the requested work'});
-  }return kept;}catch(e){await Promise.all(kept.map(p=>removePhoto(p.id).catch(()=>{})));throw e;}
+    const id=newId();await keepPhoto(id,rendered.uri,namespace);kept.push({id,alt:namespace==='professional'?'Professional-supplied photograph, not independently verified':'Customer-supplied photograph of the requested work'});
+  }return kept;}catch(e){await Promise.all(kept.map(p=>removePhoto(p.id,namespace).catch(()=>{})));throw e;}
 }

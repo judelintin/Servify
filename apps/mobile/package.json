@@ -15,7 +15,9 @@
     "verify:browser": "node scripts/verify-browser.mjs",
     "export:all": "expo export --platform all",
     "verify:requests": "node scripts/verify-requests.mjs",
-    "verify:requests-browser": "node scripts/verify-requests-browser.mjs"
+    "verify:requests-browser": "node scripts/verify-requests-browser.mjs",
+    "verify:professional": "node scripts/verify-professional.mjs",
+    "verify:professional-browser": "node scripts/verify-professional-browser.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
