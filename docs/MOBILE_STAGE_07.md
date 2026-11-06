@@ -1,0 +1,57 @@
+# Mobile Stage 07 — Welcome and first-launch onboarding
+
+Built on approved `fba07b41a54f14dec0ccab131fb1e80fe9063565`. Visual approval and a local checkpoint were authorized in the Stage 08 brief on 6 November 2026. Existing workspace screens, role switching, business records, website/Netlify, Expo account and tunnel configuration remain unchanged. No permissions, dependencies, authentication or backend resources are added.
+
+## Experience and assets
+
+The approved-functionality Stage 07 welcome is visually redesigned using the supplied screenshot's large upper composition, centred compact typography, whitespace and anchored primary action. Servify branding, photography, palette and wording remain its own. Headlines are “Find the right person. Get it done.”; “Your job. Your choice.”; “Your skills deserve to be seen.” Supporting text follows the visual-redesign brief.
+
+All photographs already exist in the approved project. The electrician image is reused directly. The approved cleaning and workshop photographs are copied byte-for-byte from website assets into the mobile package; the website files are untouched. See `apps/mobile/assets/README.md` for Pexels provenance. Home-care imagery illustrates customer needs, and the monochrome workshop portrait illustrates skilled work broadly; carpentry is not a new launch category. No subject is presented as a registered/verified user or confirmed Ibadan resident. No identities or nationalities are inferred. Commissioned local photography with consent remains a launch improvement. There are no new image downloads, AI-generated photos, remote runtime image dependencies or image libraries.
+
+The pager supports horizontal touch swipes, Next, Back, Skip, Get Started and labelled pagination buttons. A dominant horizontal movement must pass an intentional threshold; vertical content scrolling does not dismiss onboarding. Buttons and swipes update one shared page index. Programmatic scrolling respects reduced motion. Inactive pages are hidden from assistive technology and current-page changes are announced on native. Pagination targets are at least 44×44px. Footer actions stay outside the vertically scrollable page content.
+
+Image frames use a numeric height derived from the measured pager viewport, bounded between 280 and 380px. The image fills that explicitly bounded frame without contributing intrinsic dimensions to an auto-height row. Each page can scroll vertically on short screens or with larger text. Width changes remeasure the pages while retaining the selected index. Native orientation remains portrait, per existing app configuration. No fragile in-flow percentage-height image layout or app-wide gesture dismissal is used.
+
+### Visual redesign details
+
+- Discover services: layered electrician/home-care photographs, compact Electrical and Plumbing cards, restrained blue shape and orange arrow accent.
+- Post & compare: an illustrative electrical request with overlapping offer cards using existing Servify typography, category icons, currency formatter, price/scope/timeframe vocabulary and card treatments. Amounts are labelled examples; no customer/provider identities, ratings, verification or real transactions are invented. Illustrations never create stored records or expose fake interactive controls. Both example prices remain readable.
+- Professional growth: a workshop portrait, a profile strip and an overlapping electrical-work portfolio tile. No fabricated profile completeness, verification or social proof is displayed.
+- Editorial imagery and illustrative-UI disclosures remain visible inside the visuals. Each composition has an accessible grouped description. Image frames have explicit numeric dimensions and cover crops, and illustrative layers are positioned inside those bounded frames.
+- Role selection uses centred editorial copy and compact horizontal option cards with icon, title, short description and a blue selected border/check. Continue stays anchored. In replay, Back to Servify moves into the header so the primary CTA retains the same bottom position as first launch.
+- Swipe logic, pagination state, Skip/Get Started, mode saving and all welcome persistence/migration logic remain unchanged by the redesign.
+
+## Role selection and replay
+
+Both Skip and Get Started lead to “How would you like to start?” with Find a professional and Offer my services cards, supporting descriptions, accessible radio semantics, a visible blue border/check state and an explicit Continue action. Nothing is preselected. The chosen role is persisted through the existing preview store, then the welcome marker is completed. Customer or Professional Home and all later switching behavior are unchanged. This chooses a preview workspace, not an account or secure identity.
+
+The optional `/welcome` route replays the introduction for returning users without clearing records or resetting the stored first-launch marker. Back to Servify exits replay; choosing a role explicitly uses the same preference mechanism. No new link/control is injected into approved workspace screens. Browser replay: `http://127.0.0.1:8081/welcome`. Existing iPhone users can use the replay deep link/QR below instead of clearing storage. Use the normal app URL for a genuinely fresh first launch; the replay URL is intended for returning reviewers.
+
+## Persistence and existing-user migration
+
+New optional marker: `servify.mobile.welcome.v1`, schema 1, with `introduced` and `roleChosen` flags. First-launch inspection waits for bounded reads before mounting any workspace screen. It reads the marker, established mode/draft/profile/marketplace/discovery keys and, where available, the list of other Servify mobile keys (including photo-only records). Merely checking storage never writes a marker or touches business records.
+
+Any existing Servify record/preference makes the user returning, even if the marker does not exist. Existing mode hydration determines their Home role. Opaque or malformed legacy business records are not parsed or rewritten by welcome migration; their existing feature stores retain their own recovery behavior. First-time users see the introduction; completion/skip persists `introduced` and proceeds to role selection. Reload after that returns to role selection until a role is saved. Returning users bypass onboarding with no reset, forced introduction or new account creation.
+
+Marker reads/writes have four-second bounds and baseline checks. Malformed/future welcome schemas or read errors show a recovery choice instead of guessing that the user is new. Existing records remain untouched. Retry can re-read preferences; Continue to workspace is an explicit session-only bypass; View introduction remains available. A failed marker/role write explains that the preference may not survive restart and requires an explicit Continue for this session action. A successfully saved legacy role preference itself is sufficient to identify a returning user even if the optional marker write fails. Timed-out writes cannot be cancelled by JavaScript, and baseline checks are not a cross-process database transaction. No storage clearing/reset/deletion is implemented.
+
+## Verification
+
+- `verify:welcome` passes fresh and partial onboarding, persistent flags, returning-user detection for all established keys and photo-only storage, read-only migration, malformed/future-marker preservation, denied/stalled storage, explicit session continuation, retry and external marker conflicts.
+- `verify:welcome-browser` passes at 320/390/430px: fresh intro, Next/Back, actual CDP touch swipes in both directions, pagination, Get Started, Skip/replay, disabled-until-selected Continue, customer/professional role selection, reload and first-launch bypass. A 390/430px rerun used DOM-ready navigation with longer reload timeout while Metro exports were busy; assertions still wait for the actual interface.
+- Isolated returning-user tests preserve raw mode, draft, profile, marketplace/review and image records byte-for-byte and do not add a welcome marker. Read and write failures permit explained, non-destructive session continuation at 320×600. No reviewer data is seeded or cleared.
+- Screenshot review caught and corrected a React Native empty-text warning in role selection. React ref handling was adjusted to comply with lint without suppressions. Header bounds and a settled screenshot confirmed a missing header in one immediate capture was a capture-timing artifact; redesigned screenshots likewise wait for a settled capture.
+- Initial Stage 07 web/Android/iOS-Hermes exports passed. The subsequent visual redesign passes focused mobile lint (zero warnings), TypeScript, welcome-domain and browser checks; the full platform exports were not unnecessarily repeated for this visual-only follow-up. `verify-welcome-layout.mjs` also passes at 320×568 and after resizing to 430×844 and 768×430: page index retained, footer accessible and no horizontal overflow. Existing business-model regressions are reused where applicable; unrelated full-workspace browser audits are not repeated.
+- Runtime screenshots, QR helpers and exports remain ignored artifacts. Asset provenance is documentation, and only the two approved copied editorial JPGs are application assets.
+
+## Physical-device and dependency limitations
+
+Codex cannot view the physical iPhone or run an iOS simulator. Browser gestures, screenshots and native bundles do not establish native visual approval. On iPhone, review photograph crops, viewport heights, safe areas, scrolling at larger text sizes, horizontal swipe thresholds, screen-reader announcements, pagination and role controls. Check that vertical scrolling does not advance a page and that normal launch with your existing records bypasses onboarding. Native portrait orientation is unchanged; browser resizing does not validate physical rotation.
+
+No dependencies added or upgraded; the lockfile is unchanged. Recorded audit baseline remains 19 moderate, zero high and zero critical (existing glob/minimatch-related Expo/ESLint paths), not a fresh registry audit. No incompatible dependency downgrade was applied. Authentication, Supabase, role authorization and cross-device preference synchronization remain deferred; device-local mode choice is not a security boundary.
+
+## Review URLs and Git
+
+Expo Go and the existing tunnel configuration are preserved. Normal URL: `exp://c-lintin-23gwt2-mw4ykjcwx82r57jm.on.expo.app`. Returning-user replay: `exp://c-lintin-23gwt2-mw4ykjcwx82r57jm.on.expo.app/--/welcome`, following [Expo Go's documented deep-link format](https://docs.expo.dev/linking/into-your-app/). The existing public tunnel returned a successful SDK 58 iOS manifest during final verification. A replay QR is available under ignored `artifacts/mobile-stage-07/welcome-replay.png`. It has not been scanned on a physical iPhone by Codex; if Expo Go opens the Home screen, use the browser replay for initial review and report the native behavior without clearing data.
+
+The Stage 08 brief authorizes the local checkpoint `feat: complete Servify mobile welcome onboarding`. No pushes, cloud builds, hosting deployment, account settings or tunnel configuration changes are included. Keep the same SDK 58-compatible Expo Go account and this computer/server online. Each device has separate local records. Visual approval is user-reported; the remaining physical-device/accessibility checks above remain outstanding.

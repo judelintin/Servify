@@ -22,3 +22,5 @@ See [Mobile Stage 04](../../docs/MOBILE_STAGE_04.md) for explicit device-local p
 See [Mobile Stage 05](../../docs/MOBILE_STAGE_05.md) for selected-job acceptance, WAT scheduling, job-specific conversations, work progress, completion and local issues. Run `npm run verify:delivery` and `npm run verify:delivery-browser`. No real notifications or cross-device delivery are provided.
 
 See [Mobile Stage 06](../../docs/MOBILE_STAGE_06.md) for completed-job reviews, accessible ratings, versioned professional responses, reputation and moderation visibility. Run `npm run verify:trust` and `npm run verify:trust-browser`. Feedback stays device-local; use Preview and Confirm before leaving.
+
+See [Mobile Stage 07](../../docs/MOBILE_STAGE_07.md) for first-launch welcome, role selection and read-only existing-user migration. Run `npm run verify:welcome`, `npm run verify:welcome-browser` and `node scripts/verify-welcome-layout.mjs`. Returning users bypass the introduction; `/welcome` replays it without clearing records.

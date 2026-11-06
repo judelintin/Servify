@@ -23,7 +23,9 @@
     "verify:delivery": "node scripts/verify-delivery.mjs",
     "verify:delivery-browser": "node scripts/verify-delivery-browser.mjs",
     "verify:trust": "node scripts/verify-trust.mjs",
-    "verify:trust-browser": "node scripts/verify-trust-browser.mjs"
+    "verify:trust-browser": "node scripts/verify-trust-browser.mjs",
+    "verify:welcome": "node scripts/verify-welcome.mjs",
+    "verify:welcome-browser": "node scripts/verify-welcome-browser.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
