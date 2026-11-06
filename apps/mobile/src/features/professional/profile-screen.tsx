@@ -1,3 +1,4 @@
+import { ReputationSection } from '../marketplace/reviews';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -21,6 +22,6 @@ export function ProfessionalProfileScreen(){const snapshot=useProfessional(),rou
     <Type variant="caption" color={c.muted}>{snapshot.storage==='session'?'This profile is kept in this session only and may not survive restarting.':'This profile is stored only on this device.'} It is not publicly searchable, visible to customers or synced with the website.</Type>
     <ProfessionalSummary content={profile.content} onEdit={edit}/>
     <View><View style={{flexDirection:'row',alignItems:'center',gap:12,marginBottom:16}}><Type variant="section" style={{flex:1}}>Work samples</Type><Button label="Manage portfolio" variant="ghost" onPress={()=>edit(4)}/></View>{profile.content.portfolio.length?<PortfolioGallery content={profile.content}/>:<EmptyState compact icon="image" title="Let your work tell the story." description="Add examples you completed and have permission to share. Work samples are optional." action="Add work samples" onAction={()=>edit(4)}/>}</View>
-    <ProfileCompleteness content={profile.content} onEdit={edit}/><VerificationNote/><Button label="Switch your mode" variant="secondary" icon="repeat" onPress={()=>router.push('/switch-mode')}/><ProfessionalStorageNotice/>
+    <ReputationSection/><ProfileCompleteness content={profile.content} onEdit={edit}/><VerificationNote/><Button label="Switch your mode" variant="secondary" icon="repeat" onPress={()=>router.push('/switch-mode')}/><ProfessionalStorageNotice/>
   </View></Page>;
 }

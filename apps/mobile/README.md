@@ -20,3 +20,5 @@ See [Mobile Stage 03](../../docs/MOBILE_STAGE_03.md) for professional model/comp
 See [Mobile Stage 04](../../docs/MOBILE_STAGE_04.md) for explicit device-local publication, professional discovery, offer drafts/submission/editing/withdrawal, customer comparison/selection and persistence safeguards. Run `npm run verify:marketplace`, `npm run verify:marketplace-browser` and `node scripts/verify-marketplace-edges.mjs` for focused checks. All activity remains on the current device; offer typing is not autosaved, so use Save offer draft before leaving.
 
 See [Mobile Stage 05](../../docs/MOBILE_STAGE_05.md) for selected-job acceptance, WAT scheduling, job-specific conversations, work progress, completion and local issues. Run `npm run verify:delivery` and `npm run verify:delivery-browser`. No real notifications or cross-device delivery are provided.
+
+See [Mobile Stage 06](../../docs/MOBILE_STAGE_06.md) for completed-job reviews, accessible ratings, versioned professional responses, reputation and moderation visibility. Run `npm run verify:trust` and `npm run verify:trust-browser`. Feedback stays device-local; use Preview and Confirm before leaving.
