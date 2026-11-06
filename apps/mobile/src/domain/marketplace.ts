@@ -1,3 +1,4 @@
+import { createDelivery, parseDeliveries, type JobDelivery } from "./delivery";
 import { amount, firstIncomplete, parseRequests, type RequestDraft, type Photo } from './requests';
 import { parseProfessional, requiredProfessionalComplete, type ProfessionalProfile } from './professional';
 
@@ -5,8 +6,8 @@ export interface OfferContent { price: string; priceType: 'estimate'|'fixed'; sc
 export type OfferStatus = 'draft'|'submitted'|'withdrawn'|'selected'|'unavailable';
 export interface Opportunity { id: string; sourceId: string; sourceRevision: number; revision: number; publishedAt: string; status: 'preview_published'|'provider_selected'; selectedOfferId: string|null; request: RequestDraft }
 export interface Offer { id: string; jobId: string; providerId: 'local-professional'; revision: number; status: OfferStatus; createdAt: string; updatedAt: string; submittedAt: string|null; content: OfferContent; professional: ProfessionalProfile }
-export interface Marketplace { schemaVersion: 1; revision: number; jobs: Opportunity[]; offers: Offer[] }
-export const emptyMarketplace = (): Marketplace => ({schemaVersion:1,revision:0,jobs:[],offers:[]});
+export interface Marketplace { schemaVersion: 2; revision: number; jobs: Opportunity[]; offers: Offer[]; deliveries: JobDelivery[] }
+export const emptyMarketplace = (): Marketplace => ({schemaVersion:2,revision:0,jobs:[],offers:[],deliveries:[]});
 export const emptyOffer = (): OfferContent => ({price:'',priceType:'estimate',scope:'',availability:'',conditions:''});
 export const offerLabels: Record<OfferStatus,string> = {draft:'Draft offer',submitted:'Pending · local preview',withdrawn:'Withdrawn',selected:'Selected · local preview',unavailable:'Not selected · unavailable'};
 export const jobLabel = (job: Opportunity) => job.status==='provider_selected'?'Professional selected · preview':'Published · local preview';
@@ -36,7 +37,7 @@ const copy=<T,>(v:T):T=>JSON.parse(JSON.stringify(v));
 export function parseMarketplace(raw:string):Marketplace {
   if(raw.length>5_000_000)throw Error('Marketplace records exceed this preview’s limit.');
   const m=JSON.parse(raw) as Marketplace;
-  if(m?.schemaVersion!==1||!Number.isInteger(m.revision)||m.revision<0||!Array.isArray(m.jobs)||!Array.isArray(m.offers)||m.jobs.length>100||m.offers.length>500)throw Error('Unsupported marketplace records.');
+  if(![1,2].includes(m?.schemaVersion)||!Number.isInteger(m.revision)||m.revision<0||!Array.isArray(m.jobs)||!Array.isArray(m.offers)||m.jobs.length>100||m.offers.length>500)throw Error('Unsupported marketplace records.');
   const jobs=m.jobs.map(j=>{
     if(!id(j?.id)||!id(j.sourceId)||!revision(j.sourceRevision)||!revision(j.revision)||!date(j.publishedAt)||!['preview_published','provider_selected'].includes(j.status)||(j.selectedOfferId!==null&&!id(j.selectedOfferId)))throw Error('Invalid preview request.');
     const request=parseRequests(JSON.stringify({schemaVersion:1,drafts:[j.request]}))[0]!;
@@ -55,6 +56,8 @@ export function parseMarketplace(raw:string):Marketplace {
   if(new Set(jobs.map(j=>j.id)).size!==jobs.length||new Set(jobs.map(j=>j.sourceId)).size!==jobs.length||new Set(offers.map(o=>o.id)).size!==offers.length)throw Error('Duplicate marketplace identifiers.');
   const active=offers.filter(o=>['draft','submitted'].includes(o.status));if(new Set(active.map(o=>o.jobId+':'+o.providerId)).size!==active.length)throw Error('Duplicate active offer.');
   for(const j of jobs){const selected=offers.filter(o=>o.jobId===j.id&&o.status==='selected');if(j.status==='provider_selected'?(selected.length!==1||selected[0]?.id!==j.selectedOfferId||active.some(o=>o.jobId===j.id)):(j.selectedOfferId!==null||selected.length!==0))throw Error('Contradictory selection.');}
-  return {schemaVersion:1,revision:m.revision,jobs,offers};
+  const selections=jobs.filter(j=>j.selectedOfferId).map(j=>{const o=offers.find(o=>o.id===j.selectedOfferId)!;return {id:o.id,jobId:j.id,offerId:o.id,providerId:o.providerId,selectedAt:o.updatedAt};});
+  const deliveries=parseDeliveries(Number(m.schemaVersion)===1?selections.map(createDelivery):m.deliveries,selections);if(!deliveries)throw Error("Invalid job lifecycle records.");
+  return {schemaVersion:2,revision:m.revision,jobs,offers,deliveries};
 }
 export const photoCopies=(photos:Photo[])=>photos.map(p=>({...p}));

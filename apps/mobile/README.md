@@ -18,3 +18,5 @@ See [Mobile Stage 03](../../docs/MOBILE_STAGE_03.md) for professional model/comp
 `node scripts/verify-professional-edges.mjs` checks optional-image skipping, small-business details and missing-image recovery in a short mobile viewport.
 
 See [Mobile Stage 04](../../docs/MOBILE_STAGE_04.md) for explicit device-local publication, professional discovery, offer drafts/submission/editing/withdrawal, customer comparison/selection and persistence safeguards. Run `npm run verify:marketplace`, `npm run verify:marketplace-browser` and `node scripts/verify-marketplace-edges.mjs` for focused checks. All activity remains on the current device; offer typing is not autosaved, so use Save offer draft before leaving.
+
+See [Mobile Stage 05](../../docs/MOBILE_STAGE_05.md) for selected-job acceptance, WAT scheduling, job-specific conversations, work progress, completion and local issues. Run `npm run verify:delivery` and `npm run verify:delivery-browser`. No real notifications or cross-device delivery are provided.
