@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {Buffer} from 'node:buffer';
+import {load,root,resolve} from './domain-loader.mjs';
+const {createSessionStorage}=load(resolve(root,'src/beta/session-storage-core.ts'));
+const disk=new Map([['servify.mobile.requests.v1','preserved draft']]);let fail=false;
+const port={getItemAsync:async k=>disk.get(k)??null,setItemAsync:async(k,v)=>{if(fail)throw Error('Denied');assert(Buffer.byteLength(v)<2048);disk.set(k,v);},deleteItemAsync:async k=>{disk.delete(k);}};
+const store=createSessionStorage(port),token='a'.repeat(6000)+'日本語'.repeat(1000);
+assert.equal(await store.getItem('auth'),null);await store.setItem('auth',token);assert.equal(await createSessionStorage(port).getItem('auth'),token);
+fail=true;await assert.rejects(store.setItem('auth','replacement'));fail=false;assert.equal(await store.getItem('auth'),token);
+await Promise.all([store.setItem('auth','first'),store.setItem('auth','second')]);assert.equal(await store.getItem('auth'),'second');
+await store.removeItem('auth');assert.equal(await store.getItem('auth'),null);assert.equal(disk.get('servify.mobile.requests.v1'),'preserved draft');
+disk.set('servify.beta.auth','{bad');await assert.rejects(store.getItem('auth'));assert.equal(disk.get('servify.beta.auth'),'{bad');
+console.log('PASS secure session chunks, Unicode payload, restoration, write failure, queued updates, logout isolation, malformed-session preservation');

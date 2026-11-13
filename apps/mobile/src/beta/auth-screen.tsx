@@ -1,0 +1,15 @@
+import { useState } from 'react';
+import { View } from 'react-native';
+import {useRouter} from 'expo-router';
+import { Button, Input, Page, Type } from '../ui/primitives';
+import { betaClient } from './client';
+import {useBetaAccount} from './account';
+
+/** Isolated auth slice. Never imports preview records or changes interface mode. */
+export function BetaAuthScreen(){
+ const {status:state,user}=useBetaAccount(),router=useRouter();
+ const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ async function login(){if(!betaClient||busy)return;setBusy(true);setMessage('');try{if(!email.trim()||!password)throw Error('Enter your email and password.');const {error}=await betaClient.auth.signInWithPassword({email:email.trim(),password});if(error)throw error;setPassword('');}catch{setMessage('Sign-in failed. Check your credentials, verified invitation and connection, then try again.');}finally{setBusy(false);}}
+ async function logout(){if(!betaClient||busy)return;setBusy(true);try{const {error}=await betaClient.auth.signOut();if(error)throw error;setPassword('');}catch{setMessage('Could not sign out. Check your connection and retry.');}finally{setBusy(false);}}
+ return <Page title="Private beta" back><View style={{gap:18,paddingTop:24}}><Type variant="heading" accessibilityRole="header">Servify beta access</Type><Type>Invite-only account testing. Your existing local requests and professional records remain separate and untouched.</Type><Type accessibilityRole="alert">Registration, verification email and password recovery are not available for external testing until SMTP and approved redirects are configured.</Type>{!betaClient?<Type>Beta connection is not configured on this development client.</Type>:state==='loading'?<Type accessibilityLiveRegion="polite">Checking your beta session…</Type>:state==='authenticated'&&user?<><Type>Signed in to the beta account. {user.app_metadata.servify_controlled_test?'Administratively provisioned test account; email delivery is untested.':user.email_confirmed_at?'Email confirmed.':'Email verification required; marketplace access remains blocked.'}</Type><Button label="Open beta workspace" onPress={()=>router.push("/jobs")}/><Button label="Sign out of beta" busy={busy} onPress={()=>void logout()}/></>:<><Input label="Beta email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email"/><Input label="Password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password"/><Button label="Sign in to beta" busy={busy} onPress={()=>void login()}/>{state==='error'&&<Type accessibilityRole="alert">Your session could not be verified. Sign in again when connected.</Type>}</>}{!!message&&<Type accessibilityRole="alert">{message}</Type>}</View></Page>;
+}

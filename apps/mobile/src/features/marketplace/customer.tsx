@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import {useBetaAccount} from '../../beta/account';
+import {BetaPublishPanel,BetaSessionNotice} from '../../beta/workspace';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { marketplaceStore, publishRequest, useMarketplace } from '../../data/marketplace';
@@ -9,7 +11,8 @@ import { colors as c } from '../../theme/tokens';
 import { Badge, Button, EmptyState, Type } from '../../ui/primitives';
 import { Confirm, MarketNotice, s } from './components';
 
-export function PublishPanel({draft}:{draft:RequestDraft}){const market=useMarketplace(),requests=useRequests(),[confirm,setConfirm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),lock=useRef(false);const job=market.data.jobs.find(j=>j.sourceId===draft.id),eligible=draft.reviewed&&firstIncomplete(draft.content)===6;
+export function PublishPanel({draft}:{draft:RequestDraft}){const beta=useBetaAccount();if(beta.status==='loading'||beta.status==='error')return <BetaSessionNotice/>;return beta.user?<BetaPublishPanel key={beta.user.id+draft.id} draft={draft}/>:<LocalPublishPanel draft={draft}/>;}
+function LocalPublishPanel({draft}:{draft:RequestDraft}){const market=useMarketplace(),requests=useRequests(),[confirm,setConfirm]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),lock=useRef(false);const job=market.data.jobs.find(j=>j.sourceId===draft.id),eligible=draft.reviewed&&firstIncomplete(draft.content)===6;
   async function publish(){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{if(requests.storage!=='device'||requests.saving)throw Error('Save this draft successfully to device storage before publishing.');await publishRequest(draft);setConfirm(false);}catch(e){setError(e instanceof Error?e.message:'Publication failed. Your draft is preserved.');}finally{lock.current=false;setBusy(false);}}
   return <View style={{gap:14}}>{!market.ready?<Type>Restoring local publication…</Type>:job?<><Badge>{jobLabel(job)}</Badge><Type variant="caption" color={c.muted}>The published snapshot is separate from this source draft. Editing or deleting the draft does not update or remove the snapshot.</Type><CustomerOffers job={job}/></>:<View style={s.card}><Type variant="section">Ready to explore offers?</Type><Type color={c.muted}>Make a snapshot available to Professional mode on this device only. No real professionals are notified.</Type>{!eligible&&<Type variant="caption" color={c.muted}>Complete every required step and save the reviewed request before publishing.</Type>}<Button label="Publish to local preview" icon="arrow-up-right" disabled={!eligible||!market.ready||!!market.error||market.busy||requests.storage!=='device'||requests.saving} onPress={()=>{setError('');setConfirm(true);}}/></View>}{!!error&&<Type accessibilityRole="alert" color={c.error}>{error}</Type>}<MarketNotice/><Confirm visible={confirm} title="Publish on this device?" action="Confirm local publication" busy={busy} onCancel={()=>setConfirm(false)} onConfirm={()=>void publish()}><Type>The original draft stays intact. A separate snapshot and photo copies become visible in Professional mode here. No backend, notifications or public publishing.</Type>{!!error&&<Type accessibilityRole="alert" color={c.error}>{error}</Type>}</Confirm></View>;
 }

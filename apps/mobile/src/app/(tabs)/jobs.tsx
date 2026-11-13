@@ -1,4 +1,6 @@
 import { JobList } from '../../features/marketplace/lifecycle';
+import {useBetaAccount} from '../../beta/account';
+import {BetaSessionNotice,BetaWorkspace} from '../../beta/workspace';
 import { useState } from 'react';
 import { useRequests } from '../../data/requests';
 import { StorageNotice } from '../../ui/request-parts';
@@ -12,6 +14,11 @@ import { Discovery } from '../../features/marketplace/discovery';
 import { useMarketplace } from '../../data/marketplace';
 import { OpportunityCard } from '../../features/marketplace/components';
 export default function Jobs() {
+  const beta=useBetaAccount();
+  if(beta.status==='loading'||beta.status==='error')return <BetaSessionNotice/>;
+  return beta.user?<BetaWorkspace/>:<LocalJobs/>;
+}
+function LocalJobs() {
   const { data } = usePreview(), router = useRouter(), customer = data.mode === 'customer', {drafts,ready}=useRequests(), [search,setSearch]=useState('');
   const market=useMarketplace();
   const records=[...drafts].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).filter(d=>`${d.content.title} ${d.content.description} ${d.content.category} ${d.content.area}`.toLowerCase().includes(search.trim().toLowerCase()));

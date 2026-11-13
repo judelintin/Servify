@@ -4,5 +4,6 @@ dist/
 expo-env.d.ts
 *.tsbuildinfo
 .env*
+!.env.example
 android/
 ios/
