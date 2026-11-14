@@ -59,9 +59,21 @@ try{
  assert(!(await a.rpc('beta_select_offer',{p_command:randomUUID(),p_offer:offered.data,p_revision:received.data.revision})).error);
  assert(!(await download(b,'job-photos',job.path)).error,'selected participant read');
  step='signed link access, expiry and no public bucket access';
- const signed=await b.storage.from('job-photos').createSignedUrl(job.path,1);assert(!signed.error);
- assert((await fetch(signed.data.signedUrl)).ok);await new Promise(resolve=>setTimeout(resolve,2100));
- assert(!(await fetch(signed.data.signedUrl)).ok,'expired URL rejected');
+ const validLink=await b.storage.from('job-photos').createSignedUrl(job.path,30);
+ assert(!validLink.error,'authorized signed URL creation failed');
+ const validRead=await fetch(validLink.data.signedUrl);await validRead.arrayBuffer();
+ assert(validRead.ok,'authorized signed URL download must succeed within its validity window');
+ const shortLink=await b.storage.from('job-photos').createSignedUrl(job.path,1);
+ assert(!shortLink.error,'short-lived signed URL creation failed');
+ await new Promise(resolve=>setTimeout(resolve,2200));
+ const deadline=Date.now()+10000;let expired=false;
+ while(Date.now()<deadline){
+  const response=await fetch(shortLink.data.signedUrl,{cache:'no-store'});
+  if(!response.ok){const error=await response.json();assert([400,401].includes(response.status)&&[error.code,error.error,error.message].some(value=>/jwt|expir/i.test(String(value))),'expiry must reject the token, not fail from an unrelated server/storage error');expired=true;break;}
+  await response.arrayBuffer();await new Promise(resolve=>setTimeout(resolve,500));
+ }
+ assert(expired,'short-lived signed URL must expire within the bounded wait');
+ assert(!(await download(b,'job-photos',job.path)).error,'authenticated participant remains authorized after signed-link expiry');
  assert(!(await fetch(url+'/storage/v1/object/public/job-photos/'+job.path)).ok,'public endpoint denied');
  step='concurrent resource count bound';const reserved=await Promise.all(Array.from({length:8},()=>reserve(a,aid,'job-photos',privateRequest,jpeg).then(()=>true,()=>false)));
  assert.equal(reserved.filter(Boolean).length,7,'existing ready + seven reservations = eight');
@@ -69,7 +81,7 @@ try{
  const restored=make();assert(!(await restored.auth.signInWithPassword(accounts.find(x=>x.role==='customer'))).error);
  assert(!(await download(restored,'job-photos',job.path)).error);
  console.log(JSON.stringify({result:'PASS actual HTTPS two-account private job/profile/portfolio uploads, resource/count/MIME/size enforcement, pending visibility, stranger/anonymous denials, immutable files, offer relationship, selection, signed expiry and independent readback',requestId:request,privateRequestId:privateRequest}));
-}catch{console.error('FAIL Stage09A media at: '+step);process.exitCode=1;}
+}catch(e){console.error('FAIL Stage09A media at: '+step+'; '+e.name+'; '+String(e.message).split('\n')[0]);process.exitCode=1;}
 finally{
  for(const file of files){try{await file.client.storage.from(file.bucket).remove([file.path]);const r=await file.client.rpc('beta_forget_media',{p_id:file.id});if(r.error)throw r.error;}catch{console.error('Media fixture cleanup incomplete; inspect synthetic Stage09A registry.');process.exitCode=1;}}
  for(const client of clients){try{await client.auth.signOut({scope:'local'});}catch{}client.auth.stopAutoRefresh();}

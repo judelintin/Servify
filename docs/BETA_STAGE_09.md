@@ -1,4 +1,56 @@
-# Stage 09A — Shared media & private Storage
+# Stage 09 — Shared media and real-time messaging
+
+## Stage 09B — Real-time messaging and recovery (14 November 2026)
+
+### Recovered baseline and scope
+
+Started from main at e61e6058494e7e87a185d33aaf03039541fc8e21. The interrupted session's implementation, tests, two applied migrations and local iOS export were retained, not rebuilt from scratch. Stage 09B remains uncommitted. Recovery only corrected the signed-link regression test and finished verification/documentation; website/dependency configuration, local data adapters, credentials and prototype records were preserved. No application deployment, push, reset or cleanup of existing user records occurred.
+
+Messaging uses the existing Messages/conversation routes and shared approved JobChat composition (bubbles, composer, safe-area layout, keyboard handling and scroll behavior). Signed-in accounts see the Supabase inbox; an explicit View device-local conversations action retains access to prototype messages. Conversation links use source=beta so a failed or signed-out beta route never silently falls back to a similarly named local record.
+
+### Database and security boundary
+
+- 20261113101849_beta_realtime_messaging.sql and 20261113102118_beta_conversation_lookup.sql are applied to servify-beta only; both local SQL files match their hosted ledger hashes. Earlier five migrations remain intact.
+- Existing selected jobs receive one conversation through idempotent backfill; future job selection creates one via a database trigger. No job status is advanced and no scheduling, acceptance or other lifecycle command is introduced. Messaging before provider confirmation matches the existing local rule.
+- beta_send_message derives sender_id from auth.uid(), requires current active/confirmed/invited job participation, locks that job, validates nonblank plain text up to 2,000 characters and rejects unsupported controls. It preserves the existing 500-message beta limit. Client-supplied sender/time/ID fields are not accepted.
+- UUIDs and timestamps are generated in PostgreSQL. An identity sequence provides stable server ordering; gaps are normal and client clocks do not decide order. Concurrent sends for one job are serialized. The existing unique(sender_id,client_id) boundary returns the same server message for a matching retry and rejects changed text/job reuse.
+- Existing participant SELECT RLS remains on messages/conversations. Direct insert/update/delete remain denied. Narrow invoker RPCs call private helpers with pinned search_path and no PUBLIC/anonymous execute permission. Lookup/inbox projections expose titles and previews only for the caller's jobs; interface mode and user_metadata do not authorize access.
+- Only public.messages is in the Supabase Realtime publication. Postgres Changes uses the subscriber's authenticated SELECT RLS, including for the inbox subscription. Channel names are not the access-control boundary. No Broadcast/Presence or read-receipt policy was added.
+
+### History, delivery and failure behavior
+
+Opening a conversation loads the latest 50 rows; Load earlier messages uses a sequence cursor, merges stable IDs and preserves the reading position. Inbox pagination uses job creation time plus UUID. Realtime INSERT events update the thread and inbox without manual refresh. Subscription/re-subscription catches up from a separately tracked reconciled sequence, avoiding gaps when live events overlap history requests. Foreground and online events recreate the connection; a visible Reconnect action remains available, including during loading. Network operations are bounded and cancelled when their owning view/account changes.
+
+Messages render Sending, Not confirmed/retry, and saved to server based on actual state. Saved means database persistence, not delivery to the recipient or reading. Failed/retried sends reuse one client UUID. New incoming history, acknowledgements and pending rows reconcile by server ID/client ID so reconnects and lost acknowledgements do not render duplicates.
+
+Unsent beta messages use new account/job-scoped chat-index/chat-outbox keys through the established native SecureStore chunk adapter; browser preview uses its separate sessionStorage adapter. Queues are serialized, limited to eight messages per conversation/50 queued conversations, restored as unconfirmed after restart and retried explicitly. Corrupt/failed storage is preserved rather than overwritten. Confirmed server history is not persisted in a shared device-wide cache.
+
+Logout/account change unmounts private messaging state, removes subscriptions and clears only that account's new beta outbox namespace. It never clears local marketplace/draft/profile/message/review keys or server records. If secure-queue cleanup fails, the Auth screen reports it; encrypted leftover keys remain account-scoped and cannot be loaded for a different signed-in identity. Sign-out copy states that unsent beta messages are discarded; native behavior still needs device confirmation.
+
+### Signed-link regression — confirmed cause and narrow test fix
+
+The interrupted test grouped valid signed access and expiry into one step. Re-running it unchanged initially passed, so no application defect was inferred from the old generic failure. A test-only repeated probe reproduced the failure on probe 6: the initial GET of a newly issued one-second URL returned HTTP 400, before the expiry assertion. That short TTL could lapse during signing/network/second-boundary latency; the test had incorrectly assumed its first GET must succeed. Other probes succeeded and subsequent requests were rejected.
+
+The corrected test verifies positive access with a separate 30-second URL, then verifies a one-second URL's expiry with a bounded server-observed wait. It checks the actual structured InvalidJWT error (not only the generic human-readable message) and confirms that authenticated participant downloads still work after the signed URL expires. It does not treat an arbitrary 404/500 as proof of expiry. Temporary token/probe diagnostics were removed; signed URLs, tokens and credentials are never printed. Application 60-second links, media UI, bucket privacy, MIME/size limits and Storage RLS were not changed. This was a regression-test timing assumption, not a confirmed application authorization defect.
+
+### Verification and review boundary
+
+- Recovery reran existing rollback-only beta_messaging_security.sql successfully: participant/nonparticipant, revoked/unverified identity, role-metadata spoofing, raw writes, sender/time authority, blank/oversized/control-character content, stable retries, the 500-message cap and Realtime publication checks. SQL fixtures always roll back.
+- pwsh -File scripts/verify-controlled-beta.ps1 -Messaging passes genuine independent Auth sessions, customer-to-professional and professional-to-customer Realtime events, persisted history/new-session restoration, 50-message keyset pagination, retries/payload conflicts, disconnected catch-up, anonymous event/read denial and unchanged selected-job status.
+- -MessagingBrowser passes actual UI logins in separate Chrome contexts, bidirectional live messages, failed send → reload → retry, disconnected-socket catch-up without manual refresh, pagination, preserved local conversation rendering, raw local draft/profile/message preservation, mode-independent sender identity and logout/account switching without exposing the previous private outbox. Keyboard send, reduced motion and 320/390/430px bounds pass with no page errors.
+- Secure-session and messaging-state tests pass deduplication/order, queue acknowledgement reconciliation, restart restoration, concurrent indexing, failed-write preservation and account-isolated clearing without touching prototype data.
+- Corrected full -Media regression: PASS, including authorized 30-second signed access, bounded short-token expiry, continued authenticated access, private/public endpoint boundaries and fixture cleanup. Its job/offer/selection workflow also verifies unchanged Stage 08/09A behavior. Test cleanup targets only images/reservations created by that run; existing shared images and local records are preserved.
+- Fresh mobile/web lint and TypeScript, website production build and local iOS Hermes export pass. Screenshots/export are ignored under artifacts/beta-stage09b. No dependency was added or upgraded. Security advisor reports only the previously documented disabled leaked-password-protection warning; no new database/RLS finding. The earlier performance check found unused-index INFO notices only.
+
+Automated tests use synthetic messages/jobs labelled Controlled messaging or Controlled chat browser. These are actual shared beta fixtures, retained as synthetic test history, not claimed customer activity. Test credentials remain in the Windows vault and are supplied privately through the existing runner. No service-role credential is used by the app or these integration tests.
+
+These results are automated API, database, browser and compilation verification, not physical-iPhone approval. Still pending: actual two phones, native SecureStore force-close restoration, iOS/Android keyboards/safe areas, background/foreground interruption and native accessibility. Realtime is foreground live updates with server-history catch-up, not guaranteed background delivery or push notifications. Read/delivery receipts and attachments are not implemented. SMTP/recovery and Stage 09A content-inspection limitations remain unchanged.
+
+Review: website http://localhost:3001; Expo Go beta exp://c-kodlinsteam-qg883e-mwghq3xpflz7vweq.on.expo.app/--/beta. Recovery restored both stopped servers under the same migrated configuration; keep this computer online. New tunnel links replace historical links below.
+
+Next checkpoint: review the completed uncommitted Stage 09B changes and then explicitly authorize any local Git checkpoint. Physical-device testing remains pending; do not start a later Stage 09 subphase automatically.
+
+Current Realtime reference: https://supabase.com/docs/guides/realtime/postgres-changes . Its example anonymous permissions were not adopted; Servify retains authenticated participant-only RLS.
 
 ## Approved local checkpoint — 13 November 2026
 

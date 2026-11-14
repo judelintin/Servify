@@ -54,7 +54,7 @@ select pg_temp.check_true((select count(*)=1 from public.offers),'customer sees 
 reset role;
 update public.offers set status='accepted' where request_id=current_setting('test.request')::uuid;
 insert into public.jobs(id,request_id,offer_id,professional_id,customer_id,status,completed_at) select '30000000-0000-4000-8000-000000000001',request_id,id,professional_id,'00000000-0000-4000-8000-000000000001','completed',now() from public.offers where request_id=current_setting('test.request')::uuid;
-insert into public.conversations(job_id) values('30000000-0000-4000-8000-000000000001');
+insert into public.conversations(job_id) values('30000000-0000-4000-8000-000000000001') on conflict do nothing;
 insert into public.messages(job_id,sender_id,body,client_id) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Synthetic private message',gen_random_uuid());
 select pg_temp.denied($q$insert into public.reviews(job_id,customer_id,professional_id,rating,body) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000002',5,'Wrong customer')$q$);
 set local role authenticated;

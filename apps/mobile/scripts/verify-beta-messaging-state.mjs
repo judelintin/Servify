@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
+import {load,root,resolve} from './domain-loader.mjs';
+const require=createRequire(import.meta.url),ts=require('typescript'),model=load(resolve(root,'src/beta/messaging-model.ts'));
+const a=randomUUID(),b=randomUUID(),job=randomUUID(),job2=randomUUID(),cid=randomUUID();
+const first={id:randomUUID(),job_id:job,sender_id:a,client_id:cid,body:'Message',created_at:new Date().toISOString(),sequence:10},later={...first,id:randomUUID(),client_id:randomUUID(),sequence:20};
+assert.deepEqual(model.mergeMessages([later],[first,first,later]).map(m=>m.sequence),[10,20]);
+assert.equal(model.outstanding([{clientId:cid,body:'Message',state:'sending'}],[first],a).length,0);
+assert.equal(model.outstanding([{clientId:cid,body:'Message',state:'sending'}],[first],b).length,1);
+assert.throws(()=>model.parseMessage({...first,sequence:NaN}));assert.throws(()=>model.parseOutbox('[{"clientId":"invalid"}]'));
+let user=a,fail=false;const disk=new Map([['servify.mobile.marketplace.v1','local messages'],['servify.mobile.requests.v1','local drafts']]);
+const storage={getItem:async k=>disk.get(k)??null,setItem:async(k,v)=>{if(fail&&k.startsWith('chat-outbox.'))throw Error('Denied');disk.set(k,v);},removeItem:async k=>{disk.delete(k);}};
+const client={auth:{getSession:async()=>({data:{session:user?{user:{id:user}}:null}})}};
+function outbox(){const module={exports:{}},source=ts.transpileModule(readFileSync(resolve(root,'src/beta/messaging-outbox.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;vm.runInThisContext('(function(exports,require,module){'+source+'\n})')(module.exports,name=>name==='./client'?{betaClient:client}:name==='./session-storage'?{sessionStorage:storage}:name==='./messaging-model'?model:require(name),module);return module.exports;}
+const store=outbox(),pending=[{clientId:cid,body:'Private unsent message',state:'sending'}];
+await Promise.all([store.saveOutbox(a,job,pending),store.saveOutbox(a,job2,[{...pending[0],clientId:randomUUID()}])]);assert.equal(JSON.parse(disk.get('chat-index.'+a)).length,2);assert.equal((await outbox().loadOutbox(a,job))[0].state,'failed');
+const before=disk.get('chat-outbox.'+a+'.'+job);fail=true;await assert.rejects(store.saveOutbox(a,job,[{...pending[0],body:'Replacement'}]));fail=false;assert.equal(disk.get('chat-outbox.'+a+'.'+job),before);
+user=b;await assert.rejects(store.loadOutbox(a,job));await assert.rejects(store.saveOutbox(a,job,pending));await store.saveOutbox(b,job,pending);
+user=null;await store.clearChatOutbox(a);assert(!disk.has('chat-outbox.'+a+'.'+job));assert(disk.has('chat-outbox.'+b+'.'+job));assert.equal(disk.get('servify.mobile.marketplace.v1'),'local messages');assert.equal(disk.get('servify.mobile.requests.v1'),'local drafts');
+const saved=disk.get('chat-index.'+b);disk.set('chat-index.'+b,'{invalid');await assert.rejects(store.clearChatOutbox(b));assert(disk.has('chat-outbox.'+b+'.'+job));disk.set('chat-index.'+b,saved);
+console.log('PASS message ordering/deduplication, queue reconciliation, restart restoration, account isolation, concurrent indexing, failed-write preservation and logout without touching local records.');

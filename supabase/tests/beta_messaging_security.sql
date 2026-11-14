@@ -1,0 +1,147 @@
+-- Synthetic accounts/claims ONLY, always rolled back. Not a GoTrue/email/device test.
+begin;
+create function pg_temp.check_true(ok boolean, label text) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'FAIL: %',label; end if; end$$;
+create function pg_temp.denied(statement text) returns void language plpgsql as $$
+begin
+ begin execute statement; exception when insufficient_privilege or check_violation or unique_violation or raise_exception or invalid_parameter_value then return; end;
+ raise exception 'Unexpectedly allowed: %',statement;
+end$$;
+select pg_temp.check_true(not exists(select 1 from pg_tables where schemaname in ('public','private') and not rowsecurity),'every application table has RLS');
+select pg_temp.denied($q$insert into auth.users(id,email) values('00000000-0000-4000-8000-000000000009','not-invited@example.invalid')$q$);
+insert into private.beta_invites(email,expires_at) select 'test-'||n||'@example.invalid', now()+interval '1 hour' from generate_series(1,6) n;
+insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) select ('00000000-0000-4000-8000-00000000000'||n)::uuid,'test-'||n||'@example.invalid',case when n=5 then null else now() end,'{"role":"admin"}'::jsonb from generate_series(1,6) n;
+update public.accounts set status='suspended' where id='00000000-0000-4000-8000-000000000006';
+-- One unrelated draft with sensitive details, never exposed through discovery.
+insert into public.service_requests(id,customer_id,title) values('10000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Private unfinished draft');
+insert into public.request_private_details values('10000000-0000-4000-8000-000000000001','Synthetic private address');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true((select count(*)=1 from public.accounts),'owner account only');
+select pg_temp.check_true((select count(*)=1 from public.service_requests),'customer own draft');
+select public.beta_post_request('20000000-0000-4000-8000-000000000001','electrical','bodija','Repair faulty socket','A faulty electrical socket needs inspection and safe repair.','flexible',null,'quotes',null,null);
+select public.beta_post_request('20000000-0000-4000-8000-000000000001','electrical','bodija','Repair faulty socket','A faulty electrical socket needs inspection and safe repair.','flexible',null,'quotes',null,null);
+select pg_temp.check_true((select count(*)=1 from public.service_requests where status='open'),'idempotent publish');
+select set_config('test.request',(select id::text from public.service_requests where status='open'),true);
+select pg_temp.denied($q$select public.beta_post_request('20000000-0000-4000-8000-000000000001','electrical','bodija','Different payload title','A faulty electrical socket needs inspection and safe repair.','flexible',null,'quotes',null,null)$q$);
+select pg_temp.denied($q$insert into public.service_requests(customer_id) values('00000000-0000-4000-8000-000000000002')$q$);
+select pg_temp.denied($q$update public.accounts set status='active'$q$);
+select pg_temp.denied($q$delete from public.service_requests$q$);
+select pg_temp.denied($q$insert into private.admin_members(user_id,active) values('00000000-0000-4000-8000-000000000001',true)$q$);
+select pg_temp.check_true(not private.admin(),'user_metadata cannot grant admin');
+-- Professional B: profile incomplete cannot discover/offer.
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true((select count(*)=0 from public.service_requests),'no unrelated raw requests');
+select pg_temp.check_true((select count(*)=0 from public.request_private_details),'no unrelated private address');
+select pg_temp.check_true((select count(*)=0 from public.beta_discover()),'incomplete professional cannot discover');
+select pg_temp.denied($q$select public.beta_submit_offer('20000000-0000-4000-8000-000000000002',current_setting('test.request')::uuid,1500000,'fixed','Inspection and socket repair','Within two days','')$q$);
+select public.beta_save_professional('individual','Synthetic Professional','',3,'Electrical repairs with careful work and clear communication.',array['electrical'],array['bodija'],0);
+select pg_temp.check_true((select count(*)=1 from public.beta_discover() where id=current_setting('test.request')::uuid),'matching completed profile discovers open request');
+select public.beta_submit_offer('20000000-0000-4000-8000-000000000002',current_setting('test.request')::uuid,1500000,'fixed','Inspection and socket repair','Within two days','');
+select public.beta_submit_offer('20000000-0000-4000-8000-000000000002',current_setting('test.request')::uuid,1500000,'fixed','Inspection and socket repair','Within two days','');
+select pg_temp.check_true((select count(*)=1 from public.offers),'own offer and idempotency');
+select pg_temp.denied($q$update public.offers set professional_id='00000000-0000-4000-8000-000000000003'$q$);
+select pg_temp.denied($q$delete from public.offers$q$);
+select pg_temp.denied($q$insert into public.messages(job_id,sender_id,body,client_id) values(gen_random_uuid(),'00000000-0000-4000-8000-000000000002','Unauthorized message',gen_random_uuid())$q$);
+-- Independent competing provider: can see eligible listing, cannot see rival offers.
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated","aal":"aal1"}',true);
+select public.beta_save_professional('individual','Synthetic Competitor','',4,'Electrical services with careful installation and maintenance.',array['electrical'],array['bodija'],0);
+select pg_temp.check_true((select count(*)=1 from public.beta_discover() where id=current_setting('test.request')::uuid),'competitor discovery');
+select pg_temp.check_true((select count(*)=0 from public.offers),'competing offers private');
+select pg_temp.check_true((select count(*)=0 from public.professional_profiles where user_id<>'00000000-0000-4000-8000-000000000003'),'private professional profile');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true((select count(*)=1 from public.offers),'customer sees received offer');
+-- Set up a selected/completed job as trusted fixture to test participant reads.
+reset role;
+update public.offers set status='accepted' where request_id=current_setting('test.request')::uuid;
+insert into public.jobs(id,request_id,offer_id,professional_id,customer_id,status,completed_at) select '30000000-0000-4000-8000-000000000001',request_id,id,professional_id,'00000000-0000-4000-8000-000000000001','completed',now() from public.offers where request_id=current_setting('test.request')::uuid;
+insert into public.conversations(job_id) values('30000000-0000-4000-8000-000000000001') on conflict do nothing;
+insert into public.messages(job_id,sender_id,body,client_id) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001','Synthetic private message',gen_random_uuid());
+select pg_temp.denied($q$insert into public.reviews(job_id,customer_id,professional_id,rating,body) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000002',5,'Wrong customer')$q$);
+set local role authenticated;
+select pg_temp.check_true((select count(*)=1 from public.messages),'customer participant message');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true((select count(*)=1 from public.messages),'professional participant message');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true((select count(*)=0 from public.messages),'nonparticipant message denial');
+select pg_temp.denied($q$insert into public.reviews(job_id,customer_id,professional_id,rating,body) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000003','00000000-0000-4000-8000-000000000002',5,'Forged review')$q$);
+select pg_temp.denied($q$insert into public.professional_responses(review_id,body) values(gen_random_uuid(),'Forged response')$q$);
+select pg_temp.denied($q$insert into storage.objects(bucket_id,name) values('job-photos','forged.jpg')$q$);
+-- Unverified, suspended, uninvited and anonymous contexts fail closed.
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000005","role":"authenticated"}',true);
+select pg_temp.check_true(not private.member(),'unverified denied');
+select pg_temp.denied($q$select public.beta_post_request(gen_random_uuid(),'electrical','bodija','Repair faulty socket','A faulty electrical socket needs inspection and safe repair.','flexible',null,'quotes',null,null)$q$);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000006","role":"authenticated"}',true);
+select pg_temp.check_true(not private.member(),'suspended denied');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000009","role":"authenticated"}',true);
+select pg_temp.check_true(not private.member(),'uninvited denied');
+reset role;
+insert into private.admin_members(user_id,active) values('00000000-0000-4000-8000-000000000004',true);
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004","role":"authenticated","aal":"aal1"}',true);
+select pg_temp.check_true(not private.admin(),'admin requires MFA');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004","role":"authenticated","aal":"aal2"}',true);
+select pg_temp.check_true(private.admin(),'trusted assignment plus MFA');
+reset role; set local role anon;
+select pg_temp.denied('select * from public.service_requests');
+select pg_temp.denied('select * from private.admin_members');
+select pg_temp.denied('select * from public.beta_discover()');
+reset role;
+select pg_temp.check_true(not exists(select 1 from storage.buckets where id in ('job-photos','profile-photos','portfolio-images','feedback-attachments') and public),'private buckets');
+insert into public.image_assets(owner_id,bucket,object_path,alt_text) values('00000000-0000-4000-8000-000000000001','profile-photos','synthetic-owner/photo.jpg','Synthetic test photo');
+insert into storage.objects(bucket_id,name) values('profile-photos','synthetic-owner/photo.jpg');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select pg_temp.check_true((select count(*)=1 from storage.objects where bucket_id='profile-photos' and name='synthetic-owner/photo.jpg'),'owner can read registered private file');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+select pg_temp.check_true((select count(*)=0 from storage.objects where bucket_id='profile-photos' and name='synthetic-owner/photo.jpg'),'stranger cannot read private file');
+with changed as(update storage.objects set name='stolen.jpg' where bucket_id='profile-photos' and name='synthetic-owner/photo.jpg' returning id) select pg_temp.check_true((select count(*)=0 from changed),'stranger file update affects no rows');
+select pg_temp.denied($q$delete from storage.objects where bucket_id='profile-photos' and name='synthetic-owner/photo.jpg'$q$);
+reset role;
+
+-- Stage 09B: server-only sender/timestamps, immutable messages and stable retries.
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select public.beta_send_message('30000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','Customer synthetic message');
+select set_config('test.message',(select id::text from public.messages where client_id='80000000-0000-4000-8000-000000000001'),true);
+select pg_temp.check_true((select id=current_setting('test.message')::uuid from public.beta_send_message('30000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','Customer synthetic message')),'idempotent message');
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','Changed retry')$q$);
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'  '||chr(9)||chr(10))$q$);
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),repeat('x',2001))$q$);
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'bad'||chr(1))$q$);
+select pg_temp.check_true((select sender_id=auth.uid() and created_at=now() and sequence>0 from public.messages where id=current_setting('test.message')::uuid),'authoritative sender/time/sequence');
+select pg_temp.denied($q$insert into public.messages(job_id,sender_id,client_id,body) values('30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002',gen_random_uuid(),'Impersonation')$q$);
+select pg_temp.denied($q$update public.messages set body='forged' where id=current_setting('test.message')::uuid$q$);
+select pg_temp.denied($q$delete from public.messages where id=current_setting('test.message')::uuid$q$);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+select public.beta_send_message('30000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000002','Professional synthetic reply');
+select pg_temp.check_true((select count(*)=1 from public.beta_conversation('30000000-0000-4000-8000-000000000001')),'participant lookup');
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated","user_metadata":{"role":"customer"}}',true);
+select pg_temp.check_true((select count(*)=0 from public.messages where job_id='30000000-0000-4000-8000-000000000001'),'unrelated authenticated read denied');
+select pg_temp.check_true((select count(*)=0 from public.beta_conversation('30000000-0000-4000-8000-000000000001')),'unrelated lookup denied');
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'Wrong participant or interface mode')$q$);
+reset role;
+update private.beta_invites set revoked_at=now() where claimed_by='00000000-0000-4000-8000-000000000001';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select pg_temp.check_true((select count(*)=0 from public.messages where job_id='30000000-0000-4000-8000-000000000001'),'revoked member read denied');
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'Revoked member')$q$);
+reset role;
+update private.beta_invites set revoked_at=null where claimed_by='00000000-0000-4000-8000-000000000001';
+update auth.users set email_confirmed_at=null where id='00000000-0000-4000-8000-000000000002';
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000002","role":"authenticated"}',true);
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'Unverified participant')$q$);
+reset role;
+insert into public.messages(job_id,sender_id,client_id,body)
+select '30000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000001',gen_random_uuid(),'Synthetic capacity fixture'
+from generate_series(1,500-(select count(*)::int from public.messages where job_id='30000000-0000-4000-8000-000000000001'));
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+select pg_temp.denied($q$select public.beta_send_message('30000000-0000-4000-8000-000000000001',gen_random_uuid(),'Over capacity')$q$);
+select pg_temp.check_true((select id=current_setting('test.message')::uuid from public.beta_send_message('30000000-0000-4000-8000-000000000001','80000000-0000-4000-8000-000000000001','Customer synthetic message')),'retry works at capacity');
+reset role;
+select pg_temp.check_true(exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='messages'),'message publication enabled');
+select pg_temp.check_true(not has_function_privilege('anon','public.beta_send_message(uuid,uuid,text)','execute'),'anonymous command denied');
+
+select 'PASS: transaction-scoped synthetic-account database security and first request/offer slice' as result;
+rollback;
