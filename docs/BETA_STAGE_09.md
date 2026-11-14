@@ -1,4 +1,72 @@
-# Stage 09 — Shared media and real-time messaging
+# Stage 09 — Shared media, messaging and job lifecycle
+
+## Stage 09C — Shared scheduling and job lifecycle (14 November 2026)
+
+### Status and entry points
+
+Implemented from approved main checkpoint 807e2cd1835facf265b5bdbe51dff08ac2822cde. This section supersedes older statements below that scheduling/lifecycle are not connected. Stage 09C is uncommitted for review. No later subphase was started.
+
+The existing /active-jobs and /job routes now offer authenticated shared progress using the approved Page, Type, Badge, Button, Confirm, RequestDate and card components. The seven-step posting flow, home screens, visual tokens and website were not redesigned. My Jobs/Find Jobs provides View shared job progress. Shared inbox and conversation views link to the same job, and job progress links back to that job's existing Supabase conversation.
+
+The shared job route explicitly uses source=beta. A signed-out or failed beta route never falls back to a similarly named prototype job. Active Jobs retains View device-local job progress and a return link. Original local requests, photos, profiles, portfolios, messages, reviews, role preferences and onboarding records are not automatically migrated, rewritten or deleted. Existing local lifecycle controls and rules remain available.
+
+### Database migration and rules
+
+Applied 20261114155803_beta_shared_lifecycle to servify-beta only. Local/hosted SQL MD5: d74db4babc67da99ecdf111a2312dcaf. The filename was aligned to the version assigned by the hosted migration API. Previous migrations, including the PT409 performance fix, remain unchanged.
+
+Reused jobs, schedule_proposals, job_events and private.commands. Added rejected proposal status, nullable server resolved_at, one pending proposal per job, an activity identity sequence and optional schedule reference. Ordering/FK indexes support the existing participant reads. Existing schedules were empty at preflight; no existing job was advanced and no old schedule resolution time was fabricated. New columns/constraints are additive except extending the allowed proposal-status set.
+
+New authenticated invoker RPCs call private, pinned-search-path helpers:
+
+- beta_job_command: one participant-derived command surface for confirmation/decline, pre-start cancellation, proposal/acceptance/rejection/withdrawal, work start, completion request and customer completion confirmation.
+- beta_job: participant-only job/title, proposals and ordered activity snapshot.
+- beta_jobs: participant-only list with 50-row creation-time/UUID pagination.
+
+Commands require active confirmed/invited membership, derive identity from auth.uid(), lock account command scope then the job, and compare expected revision. A matching user/command UUID and identical payload returns the original result before revision checking; changed command reuse and stale revisions return PT409. No actor, status, timestamp or owner is accepted from the client. Client mode and user_metadata are never authorization inputs. Direct table mutations remain denied.
+
+Professional confirmation is required before scheduling or work. Either participant may propose a future same-day WAT window; only the counterpart accepts or rejects, and only its proposer withdraws. A new proposal supersedes an older pending proposal while preserving the confirmed appointment. Acceptance replaces the old confirmed window atomically; rejection/withdrawal preserve it. A pending proposal blocks starting work. As in the approved local rules, accepted work may start without a scheduled window when no proposal is pending.
+
+Only the professional starts work and requests completion; only the customer confirms completion. The server records completed_at only for customer-confirmed completion. Terminal states reject further transitions. Existing pre-start cancellation/decline rules require a reason and withdraw pending proposals; no penalties, payments, refund rules, automatic reopening/reselection or calendar notifications are introduced. Commercial cancellation/dispute policies remain unresolved.
+
+Each successful command increments job revision once and creates one immutable server-ID/time activity event, including proposal linkage. Sequence-based ordering is independent of client clocks. Existing beta limits remain 150 activity events and 30 proposals per job. Historical selected-job activity is retained; no existing prototype history is uploaded.
+
+### Synchronization, retries and privacy
+
+Only job_events was added to the existing messages Realtime publication. Participant SELECT RLS protects activity and proposals. The client watches authorized INSERT activity, debounces bursts and coalesces reads, then reloads the committed snapshot. Loaded list pages refresh through their stable cursor; no interval polling was introduced. One channel belongs to each mounted account/view, with cleanup and abort on unmount/account change. Initial subscription, foreground/online events and explicit reconnect restore current state after missed events.
+
+Commands are explicitly confirmed. Before transmission, the exact command ID, revision and payload are saved under a new account/job-scoped lifecycle-intent namespace using the intended native SecureStore chunk adapter (WHEN_UNLOCKED_THIS_DEVICE_ONLY). The browser adapter uses sessionStorage, whose lifetime is the browser tab. Unknown results remain Unconfirmed action and retry uses the same payload/ID. There is no automatic retry loop, silent revision rebasing or automatic replay on launch. Users can explicitly dismiss the saved instruction after reviewing server state; that never deletes server activity. Invalid/failed storage is preserved and cannot silently authorize another action. Action buttons remain blocked while retry storage is unreadable.
+
+A successful command response is checked against the correct job, then fresh server state is loaded. Network, authentication, validation and stale-state failures never report assumed success. Snapshot state unmounts on account changes, and saved pending instructions remain isolated to their owning account/job. Changing UI mode does not change the job role. No confirmed server snapshots are saved in the shared prototype store.
+
+### Verification
+
+- Actual independent Customer/Professional HTTPS sessions: PASS acceptance, schedule proposal and opposite-party rejection/acceptance, rescheduling while preserving prior agreement, withdrawal, pending-start guard, valid work/completion sequence, duplicate commands, changed payload reuse, competing same-revision proposals (one succeeds; one HTTP 409), invalid windows/states, raw-write and anonymous denial, ordered history and new reads after disconnection.
+- New rollback-only supabase/tests/beta_lifecycle_security.sql: PASS unrelated, unverified and suspended contexts, forged role/admin metadata, private lookup/list/activity/proposal boundaries, raw job/activity writes, idempotency, stale revision conflicts, required cancellation reasons, pending withdrawal on cancellation and professional-only decline.
+- Actual isolated-browser app tests: PASS two real sign-ins, live counterpart updates, shared Active Jobs/local-progress return navigation, future-date validation and keyboard focus, keyboard confirmation, failed network action -> reload -> same-command retry, rescheduling, customer-only completion, offline counterpart catch-up, correct messaging/job links, signed-out beta-route privacy, reduced-motion contexts and 320/390/430px no horizontal overflow. Raw local request/profile/marketplace/message fixture values remain unchanged.
+- Browser test findings: an error-text locator matched the page and dialog, so it was scoped to one visible match. Another test started its next proposal before the other account's rejection arrived via Realtime; it now waits for that authoritative revision before the separate offline-retry scenario. The application continues to reject stale pending actions rather than rebasing them. A stale list-error reference found by TypeScript during refactoring was corrected before final passing checks.
+- New native-adapter state test: PASS account-scoped action restoration, stable retry IDs, wrong-account rejection, conflict/unexpected-result handling, storage failure/corruption preservation, isolated clearing and WAT date conversion.
+- Existing local delivery regression: PASS selection migration, transition/role rules, schedule/reschedule, pending-start guard, message idempotency, failed saves, completion/restart and local issue path.
+- Existing SecureStore/session and messaging-state tests: PASS.
+- Existing actual private-media regression: PASS job/profile/portfolio uploads, MIME/size/count enforcement, owner/participant/stranger/anonymous boundaries, immutable files, signed expiry and fixture cleanup. Its shared publication/offer/selection slice remains intact.
+- Existing beta_messaging_security.sql and beta_media_security.sql rollback suites: PASS. Invite-only HTTPS Auth settings and anonymous/uninvited API rejection: PASS.
+- Recent performance-fix regression: PASS both HTTP 409 business conflicts (486 ms and 257 ms end to end), plus real two-way messaging/history and idempotency.
+- Website/mobile lint and TypeScript: PASS. Website production build: PASS. Final local iOS Hermes export: PASS under ignored artifacts/beta-stage09c/ios; no EAS build. Screenshots remain ignored under artifacts/beta-stage09c.
+- Security advisor: only the existing [leaked-password-protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). Performance advisor: 35 [unused-index INFO findings](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index), no new missing-FK/duplicate-index warning. No index was removed.
+- Post-migration log window: zero SQLSTATE 40001 or deadlock errors; 12 normally handled PT409 conflicts. At 16:28:59 UTC: zero blocked sessions, active application queries or idle-in-transaction sessions older than five seconds. All public tables retain RLS. No artificial retry codes remain in live application functions; no retry storm was observed. Exact CPU-percentage charts remain subject to the performance audit's dashboard-access limitation.
+- Changed-source secret scan: PASS. Website source, dependencies/lockfiles and Expo owner/project configuration are unchanged. Existing moderate dependency-audit findings remain applicable; no dependency was added or upgraded.
+
+Automated integration/browser runs retain clearly labelled synthetic selected/completed jobs and event history in the beta database. SQL-only fixtures always roll back, and media cleanup targets only its own synthetic assets. Test identifiers and passwords are supplied privately from the existing encrypted vault through stdin, never hardcoded or logged. No real personal information is used.
+
+### Review and remaining limitations
+
+Website http://localhost:3001, Metro http://127.0.0.1:8081/status and the existing public Expo tunnel returned HTTP 200. Servers/tunnel were kept running. In Expo Go, sign in through /beta, open the shared workspace, select a new offer, then use View shared job progress from each independent account. The selected professional accepts before either participant proposes a schedule; the other participant accepts/rejects. Professional starts and requests completion; customer confirms it. Existing local records remain accessible separately.
+
+These are automated database, API, browser and iOS-compilation results, not physical-iPhone approval. Still required: two actual phones, native SecureStore action restoration after force-close, background interruption, picker/media behavior, safe areas, keyboards and VoiceOver/TalkBack. Native signed-in action notes are encrypted locally; browser sessionStorage is not cross-tab/device draft synchronization. Realtime is foreground synchronization with catch-up, not push or guaranteed background delivery.
+
+Shared issues, review/reputation integration, administrative resolution, notification delivery, commercial cancellation terms, SMTP/verification/recovery delivery and Stage 09A content inspection remain deferred. No admin UI was added to mobile and no trust/identity-verification claim was introduced.
+
+Next checkpoint: review Stage 09C, authorize its Git checkpoint separately, and perform the agreed physical-device review when ready. Do not begin another Stage 09 subphase automatically. No commit, push, application deployment, service upgrade or purchase occurred in Stage 09C.
+
 
 ## Stage 09B — Real-time messaging and recovery (14 November 2026)
 
