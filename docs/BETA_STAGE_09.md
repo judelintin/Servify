@@ -135,3 +135,8 @@ Next checkpoint: review these uncommitted changes and the documented direct-uplo
 - https://supabase.com/docs/guides/storage/uploads/standard-uploads
 - https://supabase.com/docs/guides/getting-started/tutorials/with-expo-react-native
 - https://supabase.com/docs/guides/storage/serving/downloads
+
+
+## CPU audit before Stage 09C — 14 November 2026
+
+See [SUPABASE_PERFORMANCE_AUDIT.md](SUPABASE_PERFORMANCE_AUDIT.md). An ongoing PostgREST 14 retry storm came from deterministic business conflicts raised as SQLSTATE 40001. Applied migration 20261114152344 changes only the private offer-selection and professional-profile conflict codes to PT409/HTTP 409; earlier migrations, authorization and local records remain unchanged. The retry rate collapsed without terminating sessions. Job/offer, media, RLS/auth and focused two-account Realtime regressions passed. Exact CPU-percentage charts require manual dashboard confirmation because browser inspection was blocked. No Stage 09C work, commit, push or application deployment occurred.
