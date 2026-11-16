@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/icon";
 import { activeNavItem, workspaceNavigation, type WorkspaceRole } from "@/lib/navigation";
 import { getSidebarCollapsed, getServerSidebarCollapsed, setSidebarCollapsed, subscribeSidebar } from "@/lib/sidebar-preference";
 
-export function WorkspaceShell({ role, children }: { role: WorkspaceRole; children: ReactNode }) {
+export function WorkspaceShell({ role, children,mainId="main-content" }: { role: WorkspaceRole; children: ReactNode;mainId?:string }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const collapsed = useSyncExternalStore(subscribeSidebar, getSidebarCollapsed, getServerSidebarCollapsed);
@@ -54,7 +54,7 @@ export function WorkspaceShell({ role, children }: { role: WorkspaceRole; childr
         {menuOpen && <nav id="workspace-mobile-navigation" className="mobile-workspace-nav" aria-label={`${navigation.label} mobile navigation`}>{nav}<div className="mobile-nav-footer"><Link href="/" onClick={closeMenu}>Back to Servify</Link><Link href="/design-system" onClick={closeMenu}>Design system</Link></div></nav>}
         <header className="workspace-topbar"><div className="workspace-breadcrumb"><span>{navigation.label}</span><Icon name="chevron" size={12}/><strong>{current?.label ?? "Workspace"}</strong></div><div className="topbar-meta"><span className="location-label"><Icon name="pin" size={15}/>Ibadan-first</span><Badge tone="blue">Design preview</Badge></div></header>
         <div className="workspace-content">
-          <main id="main-content" tabIndex={-1}>{children}</main>
+          <main id={mainId} tabIndex={-1}>{children}</main>
           <footer className="workspace-footer"><PreviewNote marketplace/><Link href="/design-system">Design system ↗</Link></footer>
         </div>
       </div>

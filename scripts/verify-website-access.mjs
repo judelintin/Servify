@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {createHash,randomBytes} from 'node:crypto';
+const require=createRequire(import.meta.url),ts=require('typescript');
+const load=p=>{const m={exports:{}};vm.runInThisContext('(function(exports,require,module){'+ts.transpileModule(readFileSync(p,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText+'\n})')(m.exports,require,m);return m.exports;};
+const {websiteRoute}=load('src/lib/website-policy.ts'),{adminAccess}=load('src/lib/admin-access.ts');
+for(const p of['/customer/dashboard','/jobs/a/edit','/provider/offers','/providers/a/reviews','/auth/sign-up','/%63ustomer/dashboard','/CUSTOMER/dashboard','/customer%2fdashboard'])assert.equal(websiteRoute(p),'mobile');
+for(const p of['/admin','/admin/activity','/design-system'])assert.equal(websiteRoute(p),'private');
+for(const p of['/','/about','/contact','/customer-success'])assert.equal(websiteRoute(p),'public');
+assert.equal(websiteRoute('/%ZZ'),'invalid');
+const password=randomBytes(32).toString('base64url'),config={username:'test-operator',passwordHash:createHash('sha256').update(password).digest('hex')},header=(u,p)=>'Basic '+Buffer.from(u+':'+p).toString('base64');
+assert.equal(adminAccess(null,{}),'unconfigured');assert.equal(adminAccess(header('test-operator',password),{...config,passwordHash:'bad'}),'unconfigured');assert.equal(adminAccess(header('test-operator',password),config),'allowed');
+for(const h of[null,'Basic !!!','Bearer fake',header('wrong',password),header('test-operator','wrong'),'Basic '+Buffer.from('no-colon').toString('base64')])assert.equal(adminAccess(h,config),'denied');
+console.log('PASS server route classification and fail-closed operator authentication; no cookie or client role inputs.');

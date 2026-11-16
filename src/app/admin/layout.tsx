@@ -1,2 +1,3 @@
-import { WorkspaceShell } from "@/components/shells/workspace-shell";
-export default function Layout({ children }: { children: React.ReactNode }) { return <WorkspaceShell role="admin">{children}</WorkspaceShell>; }
+import {WorkspaceShell} from '@/components/shells/workspace-shell';
+import {requirePrivateAdmin} from '@/lib/server/website-access';
+export default async function Layout({children}:{children:React.ReactNode}){await requirePrivateAdmin();return <div id="main-content" tabIndex={-1} className="admin-desktop-boundary"><main className="admin-desktop-notice"><h1>Administration requires a desktop.</h1><p>Open this private workspace on a desktop browser.</p></main><div className="admin-desktop-content"><WorkspaceShell role="admin" mainId="admin-workspace-main">{children}</WorkspaceShell></div></div>;}

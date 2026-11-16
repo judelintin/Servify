@@ -1,0 +1,5 @@
+import type {Metadata} from 'next';
+import {PublicShell,SectionContainer} from '@/components/shells/public-shell';
+import {PageHeading,Card,ButtonLink} from '@/components/ui/primitives';
+export const metadata:Metadata={title:'About Us',description:'Servify is an Ibadan-first mobile marketplace for local services.'};
+export default function About(){return <PublicShell><SectionContainer className="system-page"><PageHeading eyebrow="ABOUT SERVIFY" title="Local skills. Clearer connections." description="Find the right person. Get it done."/><Card><h2>Starting with Ibadan</h2><p>Servify brings customers and service professionals together around a clear job request, considered offers and job-specific communication.</p><p>The mobile application is the home for Customer and Professional accounts and marketplace activity. Launch coverage and operating policies are still being validated during controlled testing.</p><ButtonLink href="/#app">About the mobile app</ButtonLink></Card></SectionContainer></PublicShell>;}

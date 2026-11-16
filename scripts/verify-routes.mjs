@@ -1,67 +1,29 @@
-import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
-import { setTimeout as delay } from "node:timers/promises";
-
-const port = Number(process.env.SERVIFY_VERIFY_PORT ?? 3199);
-assert(Number.isInteger(port) && port > 0 && port < 65536, "Invalid verification port");
-const base = `http://127.0.0.1:${port}`;
-const manifest = JSON.parse(await readFile(new URL("../.next/server/app-paths-manifest.json", import.meta.url), "utf8"));
-const routes = Object.keys(manifest)
-  .filter((route) => route.endsWith("/page") && !route.startsWith("/_"))
-  .map((route) => route.replace(/\/\([^/]+\)/g, "").slice(0, -5).replace(/\[([^\]]+)\]/g, "example-$1") || "/");
-const originalRoutes = ["/", "/customer/dashboard", "/jobs/new", "/jobs/example-jobId", "/provider/onboarding", "/provider/dashboard", "/offers", "/conversations", "/conversations/example-conversationId", "/admin/dashboard", "/auth/sign-in", "/auth/sign-up"];
-for (const route of originalRoutes) assert(routes.includes(route), `Stage 01 route preserved: ${route}`);
-assert(routes.includes("/design-system"), "Design-system review route exists");
-
-// Refuse an occupied port so a different server cannot yield false positives.
-const { createServer } = await import("node:net");
-const probe = createServer();
-await new Promise((resolve, reject) => {
-  probe.once("error", reject);
-  probe.listen(port, "127.0.0.1", resolve);
-});
-await new Promise((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
-
-const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(port)], {
-  cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
-});
-let output = "";
-server.stdout.on("data", (chunk) => { output = (output + chunk).slice(-8000); });
-server.stderr.on("data", (chunk) => { output = (output + chunk).slice(-8000); });
-let spawnError;
-server.on("error", (error) => { spawnError = error; });
-const exited = new Promise((resolve) => server.once("exit", resolve));
-
-try {
-  let ready = false;
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (spawnError) throw spawnError;
-    if (server.exitCode !== null) throw new Error(`Server exited: ${output}`);
-    try {
-      const response = await fetch(base, { signal: AbortSignal.timeout(2000) });
-      if (response.ok) { ready = true; break; }
-    } catch { /* Wait for production server startup. */ }
-    await delay(300);
-  }
-  assert(ready, `Production server did not become ready: ${output}`);
-  for (const route of routes) {
-    const response = await fetch(`${base}${route}`, { signal: AbortSignal.timeout(10000) });
-    assert.equal(response.status, 200, `${route}: HTTP status`);
-    const html = await response.text();
-    assert.match(html, /<h1\b/, `${route}: page heading`);
-    assert.match(html, /id="main-content"/, `${route}: main landmark`);
-    assert.match(html, /Skip to content/, `${route}: skip link`);
-    assert.match(html, /Marketplace services are not available yet|Local prototype · Records stay in this browser|Local product preview\. No live marketplace/, `${route}: preview disclosure`);
-    assert.doesNotMatch(html, /<form[^>]*action=["']https?:/i, `${route}: no external form submission`);
-    console.log(`PASS ${route}`);
-  }
-  const missing = await fetch(`${base}/stage-01-missing-page`, { signal: AbortSignal.timeout(10000) });
-  assert.equal(missing.status, 404, "Unknown route returns 404");
-  console.log("PASS missing route → 404");
-  console.log(`Verified ${routes.length} page routes and the 404 response.`);
-} finally {
-  server.kill();
-  await Promise.race([exited, delay(5000)]);
-}
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
+import {createServer} from 'node:net';
+import {randomBytes,createHash} from 'node:crypto';
+import {setTimeout as delay} from 'node:timers/promises';
+const port=Number(process.env.SERVIFY_VERIFY_PORT??3199),base='http://127.0.0.1:'+port;assert(Number.isInteger(port)&&port>0&&port<65536);
+const manifest=JSON.parse(await readFile(new URL('../.next/server/app-paths-manifest.json',import.meta.url),'utf8'));
+const routes=Object.keys(manifest).filter(p=>p.endsWith('/page')&&!p.startsWith('/_')).map(p=>p.replace(/\/\([^/]+\)/g,'').slice(0,-5).replace(/\[([^\]]+)\]/g,'example-$1')||'/');
+for(const p of['/','/about','/contact','/customer/dashboard','/provider/onboarding','/jobs/new','/offers','/conversations','/admin/dashboard','/auth/sign-in','/auth/sign-up','/design-system'])assert(routes.includes(p),'Preserved route '+p);
+const probe=createServer();await new Promise((resolve,reject)=>{probe.once('error',reject);probe.listen(port,'127.0.0.1',resolve);});await new Promise(r=>probe.close(r));
+const secret=randomBytes(32).toString('base64url'),username='isolated-operator',authorization='Basic '+Buffer.from(username+':'+secret).toString('base64');
+const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p',String(port)],{cwd:new URL('..',import.meta.url),env:{...process.env,SERVIFY_ADMIN_USERNAME:username,SERVIFY_ADMIN_PASSWORD_SHA256:createHash('sha256').update(secret).digest('hex')},stdio:['ignore','pipe','pipe'],windowsHide:true});
+let output='';server.stdout.on('data',b=>output+=b);server.stderr.on('data',b=>output+=b);const exited=new Promise(r=>server.once('exit',r));
+try{let ready=false;for(let i=0;i<80;i++){if(server.exitCode!==null)throw Error('Production server exited before readiness.');try{if((await fetch(base,{signal:AbortSignal.timeout(2000)})).ok){ready=true;break;}}catch{}await delay(250);}assert(ready,'Production server readiness');
+const legacy=p=>/^\/(customer|provider|providers|jobs|offers|conversations|auth)(\/|$)/.test(p);
+for(const route of routes){const r=await fetch(base+route,{redirect:'manual'});if(legacy(route)){assert.equal(r.status,307,route);assert.equal(new URL(r.headers.get('location'),base).hash,'#app');assert.match(r.headers.get('cache-control'),/no-store/);}
+else if(route.startsWith('/admin')||route==='/design-system'){assert.equal(r.status,401,route);assert.match(r.headers.get('www-authenticate'),/Basic/);const allowed=await fetch(base+route,{headers:{authorization}});assert.equal(allowed.status,200,'Authorized '+route);assert.match(allowed.headers.get('cache-control'),/no-store/);assert.match(await allowed.text(),/main-content/);}
+else{assert.equal(r.status,200,route);const html=await r.text();assert.match(html,/<h1\b/);assert.match(html,/main-content/);assert.doesNotMatch(html,/<a[^>]+href=["']\/(?:customer|provider|providers|jobs|offers|conversations|auth|admin)(?:\/|["'])/i);assert.doesNotMatch(html,/href=["']https?:\/\/(?:apps\.apple\.com|play\.google\.com)/i);}}
+for(const path of['/jobs/new?category=electrical','/customer/dashboard?_rsc=security','/provider/profile','/auth/sign-up','/%63ustomer/dashboard'])for(const headers of[{}, {RSC:'1','Next-Router-Prefetch':'1'}, {authorization,'x-middleware-subrequest':'proxy:proxy:proxy:proxy:proxy',cookie:'role=admin; authenticated=true'}]){const r=await fetch(base+path,{redirect:'manual',headers});assert.equal(r.status,307,'Direct/RSC/header-spoof legacy denial');}
+for(const method of['HEAD','POST'])assert.equal((await fetch(base+'/jobs/new',{method,redirect:'manual'})).status,307);
+assert.equal((await fetch(base+'/admin/dashboard',{headers:{cookie:'role=admin; aal=aal2','x-servify-admin':'true','x-middleware-subrequest':'proxy:proxy:proxy:proxy:proxy'}})).status,401);
+const session=await fetch(base+'/api/beta/session');assert([401,503].includes(session.status),'Existing API remains denied when signed out or unconfigured');assert(!Object.hasOwn(await session.json(),'userId'));
+assert.equal((await fetch(base+'/unknown-stage10-page')).status,404);
+const homepage=await(await fetch(base)).text(),asset=homepage.match(/href="([^"]+\.css[^"]*)"/)?.[1];assert(asset);const css=await fetch(base+asset.replaceAll('&amp;','&'));assert.equal(css.status,200);assert.match(css.headers.get('content-type'),/css/);
+console.log('PASS '+routes.length+' preserved page routes: public pages, server redirects, private Admin/design system, authenticated desktop source, RSC/prefetch/header-spoof/method denials, API boundary and assets.');
+if(process.env.SERVIFY_PLAYWRIGHT_PATH){const {createRequire}=await import('node:module'),require=createRequire(import.meta.url),{chromium}=require(process.env.SERVIFY_PLAYWRIGHT_PATH);const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});try{const context=await browser.newContext({reducedMotion:'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',()=>errors.push('pageerror'));await page.goto(base);await page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('servify-local-drafts',3);r.onupgradeneeded=()=>{for(const store of ['drafts','providerProfiles','marketplace'])if(!r.result.objectStoreNames.contains(store))r.result.createObjectStore(store,{keyPath:'id'});};r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,t=db.transaction(['drafts','providerProfiles','marketplace'],'readwrite');for(const store of ['drafts','providerProfiles','marketplace'])t.objectStore(store).put({id:'preserved-'+store,marker:'synthetic original',photoBytes:[0,1,2,3]});t.oncomplete=()=>{db.close();resolve();};t.onerror=()=>reject(t.error);};}));for(const route of['/','/about','/contact'])for(const width of[320,390,430,768,1024,1440]){await page.setViewportSize({width,height:900});await page.goto(base+route);await page.getByRole('heading',{level:1}).waitFor();assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));if(width===390){const menu=page.getByRole('button',{name:'Open menu',exact:true});await menu.focus();await menu.press('Enter');await page.getByRole('navigation',{name:'Public mobile navigation',exact:true}).getByRole('link',{name:'About Us',exact:true}).waitFor();await page.keyboard.press('Escape');assert(await menu.evaluate(el=>el===document.activeElement));}await page.getByRole('link',{name:'Skip to content',exact:true}).focus();await page.keyboard.press('Enter');assert(await page.locator('#main-content').evaluate(el=>el===document.activeElement));}
+await page.goto(base+'/jobs/new');assert.equal(new URL(page.url()).hash,'#app');const preserved=await page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open('servify-local-drafts',3);r.onsuccess=async()=>{const db=r.result;try{const rows=await Promise.all(['drafts','providerProfiles','marketplace'].map(store=>new Promise((ok,bad)=>{const q=db.transaction(store,'readonly').objectStore(store).getAll();q.onsuccess=()=>ok(q.result);q.onerror=()=>bad(q.error);})));db.close();resolve(rows);}catch(e){reject(e);}};r.onerror=()=>reject(r.error);}));assert.deepEqual(preserved,['drafts','providerProfiles','marketplace'].map(store=>[{id:'preserved-'+store,marker:'synthetic original',photoBytes:[0,1,2,3]}]));const operator=await browser.newContext({httpCredentials:{username,password:secret}}),admin=await operator.newPage();await admin.setViewportSize({width:1440,height:900});await admin.goto(base+'/admin/dashboard');await admin.getByRole('navigation',{name:'Admin workspace navigation',exact:true}).waitFor();await admin.setViewportSize({width:390,height:844});await admin.getByRole('heading',{name:'Administration requires a desktop.',exact:true}).waitFor();assert.equal(await admin.getByRole('navigation',{name:'Admin workspace navigation',exact:true}).isVisible(),false);assert.deepEqual(errors,[]);console.log('PASS public 320/390/430/768/1024/1440px, menu keyboard/Escape, skip links, no overflow/page errors desktop-only authenticated Admin and unchanged IndexedDB draft/profile/marketplace/photo sentinels.');}finally{await browser.close();}}
+}finally{server.kill();await Promise.race([exited,delay(5000)]);}
