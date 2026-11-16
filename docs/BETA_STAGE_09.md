@@ -1,5 +1,119 @@
 # Stage 09 — Shared media, messaging, lifecycle and trust
 
+## Stage 09E checkpoint review — 16 November 2026
+
+The user approved committing and publishing the 29-file Stage 09E checkpoint. All files matched the snapshot from its passing automated checks before this documentation-only checkpoint note. Reused those integration, browser, RLS, lint, TypeScript, website build and local iOS export results; no application fix or test-account change was needed. Fresh read-only hosted checks confirmed unchanged migration/HTTP 409 hashes, RLS on every public table, denied direct application-table writes and zero artificial 40001 function codes. Device-local formats, originals and legacy records remain separate and explicitly labelled; website/Admin, dependencies and Expo configuration are unchanged.
+
+The complete public main/origin-main history (20 commits, 526 historical blobs, 366 paths) and all outgoing candidates passed secret/private-identifier/generated-artifact review. Only main is approved for a normal fast-forward push; private backup refs are excluded. Physical-device approval, Expo Go identity/access, SMTP/recovery, leaked-password protection, image-inspection/signed-URL and existing moderate dependency limitations remain as documented below. This checkpoint authorizes no deployment, service/account changes or new development. Earlier uncommitted-status statements describe the implementation phase.
+
+## Stage 09E — End-to-end integration and mobile beta readiness (16 November 2026)
+
+### Decision
+
+Ready for controlled, synthetic-data physical-device review, subject to the Expo Go account-access gate below. Automated testing is complete; actual two-phone approval is pending. This is not approval for unrestricted external admission or production release.
+
+Started on main at ae2f49d3388ba88dafdd2fb855e7083528180d4e. Stage 09E remains uncommitted for review. No website/Admin/legacy desktop screen, dependency/lockfile, Expo project linkage, Supabase migration/configuration, existing test-account credential or authorization setting was changed. No commit, push, deployment, purchase or service upgrade. Earlier implementation/checkpoint statements below are historical.
+
+### Integration findings and corrections
+
+1. The signed-in Professional Offers tab still opened the device-local offer list. It now reuses the existing shared workspace's own-offer cards, without loading unrelated discovery data. Explicit View device-local offers / Back to shared offers preserves the approved local editing/withdrawal flow and labels its source.
+2. Workspace offers used all RLS-readable rows. Because one account may act as customer and professional, those rows can include offers received as a customer. Reads now explicitly scope requests to the current customer, offers to those request IDs or the current professional, and profile revision to its owner. Account changes during a read reject reconciliation; account/mode/view keys reset stale workspace state. RLS remains the authoritative boundary.
+3. The final posting step could hide the account-posting action when the source already had a local publication, and selected its destination after asynchronous saving. A signed-in reviewed request now posts directly through its captured account identity, independent of local preview state; session changes cannot silently publish locally. Signed-out publication still requires its explicit local confirmation. Source drafts, autosave and explicit save/exit remain intact. No automatic migration/upload.
+4. Step 7 already contains the full review, so the extra signed-in prototype confirmation was removed. Post job is the deliberate final action, with the sharing/privacy notice on that review. Posting from draft details retains one meaningful publication confirmation. Pending photo failure accurately states that the job already exists; retry reuses the same publication command and resumes uploads. The integration test confirmed two attempts produced one server request.
+5. Live account/jobs/offers/messages/media/reviews/progress copy now uses account/product language rather than Beta Workspace, Post Job to beta or broad preview labels. Draft, Pending, In Progress and Completed remain. Local drafts/profile editing/legacy records retain explicit device-local notices. Customer Profile no longer denies that a real signed-in account exists. Home's signed-in actions lead to shared jobs/offers; its local draft/completeness data remains labelled.
+6. Screenshot inspection caught Home initially rendering the local-preview branch while authentication was still being verified. Home, shared job and conversation entry points now use the existing checking/retry session state instead of temporarily offering local content or sign-in during verification. Focused tests verify an authentication network failure recovers through Retry session without showing a local Jobs fallback.
+7. Draft details now identify the source as a device draft rather than making an unconditional not-posted claim about a potentially existing server copy. Deleting a source draft does not delete a posted job or its uploaded media.
+
+The approved hero photography, visual tokens, typography, card layout, native-safe image sizing, onboarding, navigation architecture, local data formats and backend lifecycle/permissions were preserved. No new Realtime channel, polling timer, database function or infrastructure was introduced. State hooks, cleanup, keyboard labels/focus and conditional rendering were reviewed with the React checklist.
+
+### What is live and what stays local
+
+| Area | Current source and behavior |
+| --- | --- |
+| Authentication | Real invite-only Supabase email/password sessions; sign-in/sign-out and native SecureStore adapter. Public registration is restricted. Mailbox delivery/recovery is unconfigured. |
+| Professional details | Existing six-step editor saves a local draft. Save profile draft to account explicitly writes validated services, areas and introduction to Supabase; server completeness gates offers. A fresh device does not automatically download that record into the local editor. |
+| Profile/portfolio media | Explicit authenticated private Storage uploads and authorized retrieval; originals remain local. No real identity verification. |
+| Request preparation | Seven-step draft, photos, autosave, editing and source deletion are device-local. This is not cloud-draft synchronization or ownership isolation between people sharing one app installation. |
+| Posting/discovery | Post job writes a real shared request; eligible professionals discover it through server rules. Photo upload can be pending after text publication and is safely resumable. |
+| Offers/selection | Real submission, comparison, own-offer list and customer selection. Backend is authoritative. Rich local offer draft/edit/withdraw and local discovery filters remain prototype features; they are not represented as live commands. |
+| Messaging | Real participant-only history and foreground Realtime/catch-up, retry and deduplication. No push/background-delivery promise or invented read receipts. |
+| Scheduling/progress | Shared proposal/accept/reject/withdraw/reschedule, professional acceptance/start/completion request and customer confirmation. |
+| Reviews/reputation | Shared eligible reviews, edits, responses, versions, visible server aggregates and private content reports. |
+| Issues | Real private issue/open case, participant visibility and paused lifecycle. Administrative resolution/notification integration is deferred. |
+| Local legacy records | Original local jobs/offers/messages/reviews/profile/portfolio, onboarding/role preferences and photographs remain separate. No automatic upload, conversion or deletion. |
+| Website/Admin | Existing desktop/marketing and legacy workflows remain unchanged. Do not assume the legacy Admin interface operates these shared beta records. |
+
+Editing/deleting a local source draft does not edit/delete an already posted job. Reusing an unchanged draft resumes its original publication; changed payloads are rejected rather than silently overwriting the server. Device-local profile completeness does not imply server completion or verification. Account roles come from server participation/profile rules, never the mode selector.
+
+### Automated verification
+
+- Full real two-account isolated Chrome journey: PASS account sign-in, explicit profile-sharing preparation, reviewed request + synthetic JPEG, injected failed upload/retry with one publication, cross-account photo discovery, offer submission/shared Offers tab, customer comparison/selection, same-job two-way messages and offline catch-up without duplication, scheduling/rescheduling, professional work/completion request, customer confirmation, review/response/reputation, reload/session restoration, a separate active-job private issue and account switching.
+- Existing server Professional profile was compared before/after and left unchanged. Its already-complete setup was reused; the sharing dialog was opened/cancelled, not used to overwrite existing account details. Profile creation/completeness rules are covered by rollback-only synthetic fixtures and local editor tests; fresh native profile entry/sharing still needs the manual procedure.
+- Focused browser readiness: PASS real sign-ins, Customer account copy and keyboard account access, reviewed request/photo screens, stable Professional Home/Profile/Offers, reduced-motion contexts, 320/390/430px overflow checks, explicit local/shared Offers navigation, and injected authentication-read failure -> checking/error state -> successful retry with no local fallback.
+- Test scope is explicit: the integrated publication starts from a synthetic reviewed seven-step draft. It is not a physical photo-picker test. Local request/professional/domain suites cover validation, draft edit/restart/delete, storage denial/recovery, completeness, local selection/lifecycle and preservation. Normal autosave may update the isolated test draft; actual user's Expo/local records are never opened/reset by these tests.
+- Fresh state tests: PASS dual-role filtering, owner revision scoping, offers-only reads, account changes during reconciliation, wrong-account publication denial, SecureStore chunks/Unicode/restoration/failure, message queue ordering/deduplication, lifecycle pending instructions and feedback retry isolation.
+- Actual independent HTTPS lifecycle regression: PASS schedule/reschedule/rejection/withdrawal, concurrent revision conflict, valid progress/completion, private access, idempotency and ordered history.
+- Actual review/issue regression: PASS completed-job eligibility, duplicate/altered-command guards, edits/responses/versions, concurrent conflicts, aggregate ratings, private reports/issues, terminal-state denial and session isolation.
+- Rollback-only beta_lifecycle_security.sql, beta_messaging_security.sql, beta_media_security.sql and beta_trust_security.sql: PASS participant/stranger, unverified/suspended/anonymous boundaries, spoofed admin metadata, raw-write denial, immutable history, moderation visibility and private projections.
+- Actual direct-media regression: PASS MIME/size/count enforcement, owner/participant/stranger read/sign/upload/update/delete boundaries, immutable uploads, signed expiry and synthetic-asset cleanup. Publication/offer/selection is included. Integration-created jobs/messages/reviews/issues remain clearly labelled synthetic history; each media test deletes only its own synthetic reservations/files.
+- Auth settings/API denial: PASS confirmation requirements, restricted signup and anonymous/uninvited denial. Successful account sessions are real; mailbox verification/recovery delivery is not claimed.
+- Existing HTTP 409/two-way Realtime regression: PASS, profile conflict 375 ms and selection conflict 406 ms. Full integration initially exercised a valid stale-revision rejection by starting too soon after remote rescheduling; the test now waits for the new proposal state. A repeated synthetic offer-text locator was made unique. No business rule was weakened to pass tests.
+- Website and mobile lint/TypeScript: PASS. Website production build: PASS across existing public/customer/professional/Admin routes. Final local iOS Hermes export: PASS under ignored artifacts/beta-stage09e/ios; no EAS build/deployment.
+- Security advisor: existing leaked-password-protection warning only. Performance advisor: 25 unused-index INFO findings, no new missing-FK/duplicate-index finding. Existing indexes were retained.
+- Dependency audit on 16 November: website 7 moderate; mobile 10 moderate; zero high/critical. No dependency or lockfile change. npm audit's nonzero exit reflects the reported findings; this is not a zero-vulnerability claim.
+- All existing migration hashes match the hosted ledger; no new migration. HTTP 409 function hashes remain unchanged, all exposed public tables retain RLS and no live application function contains artificial SQLSTATE 40001. From 10:05:59 to 11:14:38 UTC, cumulative rollbacks increased by 291 across about 4,119 seconds including intentional denial/rollback tests; final deadlock, blocked and idle-in-transaction counts were zero. Available database logs from 10:05–11:15 UTC contain zero 40001/deadlock messages. No retry storm observed. Exact CPU percentage remains unverified.
+- Final privacy/source scan: PASS across all 29 Stage 09E candidates (274 KB) plus the 20-commit public main history, 526 historical blobs and 366 paths. No secrets, actual controlled-account login identifiers, sensitive environment files or generated-artifact candidates found. Generated screenshots/exports and local environments stay ignored. Git remains main at ae2f49d3388ba88dafdd2fb855e7083528180d4e with 29 unstaged/uncommitted changes and no staged files. Website source, Supabase configuration and existing account credentials/roles remain untouched.
+
+### Controlled two-phone procedure
+
+Use synthetic job titles/content/photos only. Keep the computer and both development servers running.
+
+1. Confirm each phone's Expo Go supports SDK 58 (the user's last reported client was 58.0.5). CLI is kodlin, project owner kodlins-team, slug servify, project UUID 1799c1ab-db36-4eb8-a421-9009642c625b; installed Expo is 58.0.23 and SecureStore 58.0.2. No upgrade was performed.
+2. Resolve Expo Go access before attempting marketplace tests. Current official physical-iOS guidance requires matching Expo CLI and Expo Go account identities. An organization membership/tunnel HTTP 200 is not proof that a friend's separate identity is accepted. Do not share the kodlin password, token or MFA code. An owner can supervise testing on their own authorized devices; if a friend's independent account is rejected, stop and use a separately approved distribution plan.
+3. Open the current direct /beta link below. On a fresh installation, complete the existing welcome/role selection if it appears before the workspace. Do not reset onboarding or storage on an existing phone.
+4. Obtain each dedicated account's identifier/password through the existing approved private handoff. A trusted Windows operator may run scripts/copy-beta-test-password.ps1 -Account Customer or -Account Professional in their own terminal, transfer through a trusted password manager, then clear clipboard/history. Do not run the provisioning script, paste credentials into Codex, email/shared documents or store them in Git. The Windows encrypted vault is not a phone export.
+5. Phone A: Sign in as Customer, choose Customer mode, open My Jobs/Post a job. Complete seven steps with a unique synthetic title and one non-sensitive work photo. Review and press Post job once. Confirm the request appears in My Jobs and its photo loads. If upload fails, the request may already exist: retry that same unchanged draft; never create a replacement just because the photo is pending.
+6. Phone B: Sign in independently as Professional, choose Professional mode. If needed, complete the six-step local profile draft with authorized test details and explicitly Save profile draft to account from Find Jobs. Do not replace an existing shared profile merely to test. Photograph sharing remains separate. Refresh Find Jobs, locate A's unique request and confirm its image.
+7. B: Submit price, scope and availability. Check the Offers tab. A: Refresh My Jobs, compare the offer, view shared reputation if desired, select once and open shared job progress. B accepts the selected job.
+8. Open that same job's conversation on both phones. Send each direction; briefly disconnect one phone and confirm catch-up on return without duplicate messages. No read receipt/background-delivery expectation.
+9. A proposes a future WAT appointment; B accepts. B proposes another window; A accepts/rejects and both verify consistent agreed/pending states before starting work. A stale-action conflict should be refreshed/reviewed, not repeatedly submitted with a new nonce.
+10. B starts work and requests completion. A confirms completion. A submits stars/written feedback; B sees/responds; A sees the reply. Open the Professional reputation and refresh its count/average.
+11. Use a second accepted, unfinished synthetic job to report an issue as Customer. Both participants should see the private open case and issue_reported status. Do not report against the completed review job: its lifecycle is intentionally ineligible. No resolution/notification guarantee.
+12. Force-close/reopen Expo Go on each phone. Check account session restoration, same conversations/history/job/review, then exercise background/network interruption, keyboard/safe areas and VoiceOver. Record device model/iOS/Go version and exact reproduction steps without credentials or private image links.
+13. Test sign-out explicitly. Private shared job/chat/review views must require sign-in. If switching accounts on one phone, sign out before signing in to the other, then select the desired interface mode separately. Mode switching alone does not change account identity. Local drafts/profile/preferences remain on the device by design and may be visible to another person with access to its storage; never mistake them for the signed-in account's private server records.
+
+### Gates and recommended next steps
+
+| Item | Readiness effect |
+| --- | --- |
+| Core tested marketplace | No known blocking integration defect remains in the covered automated journey. Controlled synthetic-data device review can proceed after resolving device access. |
+| Actual native approval | Blocking sign-off for claiming physical mobile readiness: two phones, SecureStore force-close, safe areas, keyboards, VoiceOver/TalkBack, media picker/XHR interruption and foreground recovery remain unverified. Browser reload/iOS export do not prove them. |
+| Expo Go identity gate | Potential blocker for a remote friend's independent Expo identity. Current tunnel is responsive, but native account authorization requires manual confirmation. Do not solve it by distributing owner credentials. |
+| SMTP/admission/recovery | Blocks broader external admission. Configure an approved verified sender/provider and exact web/mobile confirmation/invitation/recovery redirects, then test delivery and recovery before admitting new users. Do not disable confirmation or open public signup. No setup/purchase occurs in 09E. |
+| Password protection | Existing leaked-password-protection warning requires a separate availability/risk review before wider admission. Controlled accounts retain securely generated credentials; no auth setting/plan change was made. |
+| Image inspection | Direct authenticated Storage checks permissions, declared MIME/size and reservation metadata; client compression is not trusted content inspection. Untrusted/sensitive uploads require a separately approved hosted decode/re-encode/quarantine design. No localhost service/admin key or public bucket. |
+| Signed URLs | Bearer links remain usable until their short expiry, even after logout. Do not share/log them; downloaded images cannot be recalled. Display clears/refreshes links, but this is not immediate revocation. |
+| Local features/operations | Draft/profile-editor synchronization, shared offer editing/withdrawal, advanced discovery filters, Admin case/moderation resolution, notification delivery and commercial dispute/cancellation policy remain limited/deferred. Non-blocking for the stated controlled journey; disclose before a wider beta. |
+| Dependencies/index notices | Existing moderate audits and unused-index INFO findings remain maintenance items; no high/critical finding in this audit. No blind upgrades/index removal. |
+| Distribution | Continue only supervised trusted-device Expo Go review now. For broader external iPhone testers, propose an approved signed development/TestFlight distribution route with separate tester identities. First assess existing signing/program access, plan limits and any costs; no purchase, EAS build, publication or deployment is authorized/performed here. |
+
+Recommended sequence: review these uncommitted Stage 09E changes; run the two-phone checklist and record actual results; resolve secure Expo tester access; separately approve sender/recovery/admission and distribution work. Do not begin a later stage automatically. Supabase accounts, secrets, project settings and existing records must remain intact.
+
+### Current preview and references
+
+Website: http://localhost:3001. Metro: http://127.0.0.1:8081/status. Current Expo Go account route:
+
+exp://c-kodlinsteam-qg883e-mwj3eadut4su43ha.on.expo.app/--/beta
+
+Website, Metro and public tunnel returned HTTP 200. The terminal has the current Expo Go QR code. This replaces older tunnel links below; the URL is ephemeral and needs this computer online. It does not grant Supabase access or prove a phone's Expo-account compatibility.
+
+Documentation checked without upgrading services:
+- https://supabase.com/changelog.md
+- https://supabase.com/docs/guides/auth/quickstarts/react-native
+- https://docs.expo.dev/get-started/start-developing/
+- https://docs.expo.dev/troubleshooting/expo-go-sign-in-required/
+
+
 ## Stage 09D checkpoint review — 16 November 2026
 
 The user approved committing and publishing Stage 09D. Reviewed all 21 candidate files against e8f596380633770e185b260763d1e952c04f57e9. The 20 code/test/migration files match the previously verified snapshot; website source, Expo configuration, dependencies, local environments and records are unchanged. Reused passing lint, TypeScript, production build, local iOS export and independent-account browser/integration results rather than repeating comprehensive tests. Fresh feedback/local-trust, SecureStore, lifecycle and messaging state tests pass.

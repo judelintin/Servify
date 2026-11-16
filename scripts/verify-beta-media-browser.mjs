@@ -21,24 +21,24 @@ try{
   page.setDefaultTimeout(35000);page.on('pageerror',()=>errors.push('pageerror'));
   page.on('request',r=>{if(r.url().endsWith('/rpc/beta_reserve_media'))try{completed.push({role,id:r.postDataJSON().p_id});}catch{}});
   step='independent UI sign-in '+role;await page.goto('http://127.0.0.1:8081/beta',{waitUntil:'domcontentloaded',timeout:90000});
-  const account=accounts.find(x=>x.role===role);await page.getByRole('textbox',{name:'Beta email',exact:true}).fill(account.email);await page.getByLabel('Password',{exact:true}).fill(account.password);await page.getByRole('button',{name:'Sign in to beta',exact:true}).click();await page.getByRole('button',{name:'Open beta workspace',exact:true}).waitFor();
+  const account=accounts.find(x=>x.role===role);await page.getByRole('textbox',{name:'Email',exact:true}).fill(account.email);await page.getByLabel('Password',{exact:true}).fill(account.password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.getByRole('button',{name:'Open my workspace',exact:true}).waitFor();
  }
  step='failed upload after publication and safe retry';
  let blocked=false;await pa.route('**/storage/v1/object/job-photos/**',async route=>{if(!blocked&&route.request().method()==='POST'){blocked=true;return route.abort('connectionfailed');}return route.continue();});
- await pa.goto('http://127.0.0.1:8081/post-job/details?id='+draft.id,{waitUntil:'domcontentloaded'});await pa.getByRole('button',{name:'Post Job to beta',exact:true}).click();await pa.getByRole('button',{name:'Confirm beta publication',exact:true}).click();
+ await pa.goto('http://127.0.0.1:8081/post-job/details?id='+draft.id,{waitUntil:'domcontentloaded'});await pa.getByRole('button',{name:'Post job',exact:true}).click();await pa.getByRole('button',{name:'Confirm job publication',exact:true}).click();
  await pa.getByText('Your request was posted, but a photo still needs uploading.',{exact:false}).filter({visible:true}).first().waitFor();
- await pa.getByRole('button',{name:'Confirm beta publication',exact:true}).click();await pa.getByRole('button',{name:'View shared request',exact:true}).waitFor();
+ await pa.getByRole('button',{name:'Confirm job publication',exact:true}).click();await pa.getByRole('button',{name:'View shared request',exact:true}).waitFor();
  assert(blocked);assert.equal(await pa.evaluate(()=>localStorage.getItem('servify.mobile.requests.v1')),raw);
  step='customer and independent professional retrieve shared request image';
  await pa.getByRole('button',{name:'View shared request',exact:true}).click();
  await pa.getByLabel(photo.alt,{exact:true}).filter({visible:true}).first().waitFor();
- step='professional discovery displays customer shared photograph';await pb.getByRole('button',{name:'Open beta workspace',exact:true}).click();
+ step='professional discovery displays customer shared photograph';await pb.getByRole('button',{name:'Open my workspace',exact:true}).click();
  await pb.getByLabel(photo.alt,{exact:true}).filter({visible:true}).first().waitFor();
  step='professional explicit profile and portfolio upload';
  await pb.goto('http://127.0.0.1:8081/profile',{waitUntil:'domcontentloaded'});
  for(const label of['Share profile photo','Share work sample: Synthetic socket project']){
   await pb.getByRole('button',{name:label,exact:true}).click();const confirm=pb.getByRole('button',{name:'Upload shared photo',exact:true});await confirm.focus();assert(await confirm.evaluate(el=>el===document.activeElement));await confirm.press('Enter');
-  await pb.getByText('Shared securely with authorized beta users.',{exact:true}).first().waitFor();
+  await pb.getByText('Shared securely with authorized accounts.',{exact:true}).first().waitFor();
   if(label.startsWith('Share work'))await pb.getByText('Share your work',{exact:true}).locator('..').getByLabel('Synthetic shared portfolio photograph',{exact:true}).waitFor();
   else await pb.getByText('Share your work',{exact:true}).locator('..').getByLabel('Synthetic shared professional portrait',{exact:true}).waitFor();
  }
@@ -52,7 +52,7 @@ try{
  assert.equal(await pa.evaluate(()=>localStorage.getItem('servify.mobile.requests.v1')),raw);assert.equal(await pb.evaluate(()=>localStorage.getItem('servify.mobile.professional.v1')),profileRaw);assert.equal(await pa.evaluate(()=>localStorage.getItem('servify.mobile.photo.controlled-media-photo')),photoRaw);
  step='owner removal and account switch isolation';
  await pb.goto('http://127.0.0.1:8081/profile',{waitUntil:'domcontentloaded'});await pb.getByRole('button',{name:'Remove shared photo',exact:true}).first().click();await pb.getByRole('button',{name:'Remove shared copy',exact:true}).click();await pb.getByRole('button',{name:'Remove shared copy',exact:true}).waitFor({state:'hidden'});assert.equal(await pb.evaluate(()=>localStorage.getItem('servify.mobile.professional.v1')),profileRaw);
- await pa.goto('http://127.0.0.1:8081/beta',{waitUntil:'domcontentloaded'});await pa.getByRole('button',{name:'Sign out of beta',exact:true}).click();await pa.getByRole('button',{name:'Sign in to beta',exact:true}).waitFor();assert.equal(await pa.getByLabel(photo.alt,{exact:true}).count(),0);assert.equal(errors.length,0);
+ await pa.goto('http://127.0.0.1:8081/beta',{waitUntil:'domcontentloaded'});await pa.getByRole('button',{name:'Sign out',exact:true}).click();await pa.getByRole('button',{name:'Sign in',exact:true}).waitFor();assert.equal(await pa.getByLabel(photo.alt,{exact:true}).count(),0);assert.equal(errors.length,0);
  console.log('PASS isolated-browser real photo publication, failed-upload retry, cross-account image display, explicit profile/portfolio uploads, keyboard confirmation, deletion, reload, 320/390/430 bounds, reduced motion, logout and exact local-record preservation. Not physical-iPhone verification.');
 }catch(e){console.error('FAIL media browser at: '+step+'; '+String(e.name));process.exitCode=1;}
 finally{

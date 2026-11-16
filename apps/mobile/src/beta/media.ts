@@ -46,7 +46,7 @@ export async function uploadSharedPhoto(user:string,photo:Photo,namespace:PhotoN
  await sendImage(url+'/storage/v1/object/'+target.bucket+'/'+user+'/'+id+'.jpg',publicKey,session.access_token,body,'image/jpeg',percent=>{if(!signal?.aborted)update('uploading',percent,'Uploading photograph…');},signal);
  checkAborted(signal);await identity(user);update('confirming',100,'Confirming shared photograph…');
  const completed=await c().rpc('beta_complete_media',{p_id:id});if(completed.error)throw Error('Upload needs confirmation. Retry to finish; no local photograph has been deleted.');
- update('success',100,'Shared securely with authorized beta users.');return id;
+ update('success',100,'Shared securely with authorized accounts.');return id;
 }
 export async function readSharedImages(target:{requestId?:string;ownerId?:string}){
  let query=c().from('image_assets').select('id,owner_id,bucket,object_path,request_id,portfolio_id,alt_text,state,created_at').in('bucket',['job-photos','profile-photos','portfolio-images']).order('created_at',{ascending:false});

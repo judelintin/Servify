@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
+import {load,root,resolve} from './domain-loader.mjs';
+const require=createRequire(import.meta.url),ts=require('typescript'),me=randomUUID(),other=randomUUID(),own=randomUUID(),foreign=randomUUID();
+let user=me,reads=0,switchAfterRead=false,queries=[],rpcCalls=0;
+const rows={service_requests:[{id:own,customer_id:me},{id:foreign,customer_id:other}],offers:[{id:randomUUID(),request_id:own,professional_id:other},{id:randomUUID(),request_id:foreign,professional_id:me}],professional_profiles:[{user_id:me,revision:2},{user_id:other,revision:9}]};
+function query(table){let filters=[];const q={select:()=>q,eq:(k,v)=>{filters.push(x=>x[k]===v);return q;},in:(k,v)=>{filters.push(x=>v.includes(x[k]));return q;},order:()=>q,maybeSingle:async()=>{const data=rows[table].filter(x=>filters.every(f=>f(x)));return {data:data[0]??null,error:data.length>1?{code:'multiple'}:null};},then:(ok,bad)=>Promise.resolve({data:rows[table].filter(x=>filters.every(f=>f(x))),error:null}).then(ok,bad)};queries.push(table);return q;}
+const client={auth:{getSession:async()=>{reads++;return {data:{session:user?{user:{id:switchAfterRead&&reads>1?other:user}}:null}};}},from:query,rpc:async()=>{rpcCalls++;return {data:[{id:foreign}],error:null};}};
+const module={exports:{}},source=ts.transpileModule(readFileSync(resolve(root,'src/beta/repository.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,storage=new Map();
+vm.runInThisContext('(function(exports,require,module){'+source+'\n})')(module.exports,name=>name==='./client'?{betaClient:client}:name==='./commands'?{commandId:randomUUID}:name==='./media'?{uploadSharedPhoto:async()=>{}}:name==='@react-native-async-storage/async-storage'?{default:{getItem:async k=>storage.get(k)??null,setItem:async(k,v)=>storage.set(k,v)}}:name==='../domain/requests'?load(resolve(root,'src/domain/requests.ts')):name==='../domain/professional'?load(resolve(root,'src/domain/professional.ts')):require(name),module);
+const api=module.exports;
+const c=await api.loadRemoteWorkspace(true);assert.deepEqual(c.requests.map(x=>x.id),[own]);assert.equal(c.offers.length,1);assert.equal(c.offers[0].professional_id,other);assert.equal(c.profileRevision,2);
+const p=await api.loadRemoteWorkspace(false);assert.equal(p.offers.length,1);assert.equal(p.offers[0].professional_id,me);
+const before=rpcCalls;await api.loadRemoteWorkspace(false,true);assert.equal(rpcCalls,before,'Offers screen must not load unrelated discovery data');
+reads=0;switchAfterRead=true;await assert.rejects(api.loadRemoteWorkspace(true),/Account changed/);switchAfterRead=false;user=null;queries=[];await assert.rejects(api.loadRemoteWorkspace(true),/Sign in/);assert.equal(queries.length,0);
+user=other;await assert.rejects(api.publishRemoteDraft({id:'preserved-draft',content:{photos:[]}},me),/Account changed/);assert.equal(rpcCalls,before);
+console.log('PASS dual-role workspace filtering, own-profile scoping, offers-only reads, account-switch reconciliation and publication identity guard.');
