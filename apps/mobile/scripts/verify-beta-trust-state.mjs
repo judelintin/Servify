@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {createRequire} from 'node:module';
+import {randomUUID} from 'node:crypto';
+import {load,root,resolve} from './domain-loader.mjs';
+const require=createRequire(import.meta.url),ts=require('typescript'),model=load(resolve(root,'src/beta/messaging-model.ts'));
+const a=randomUUID(),b=randomUUID(),job=randomUUID(),disk=new Map([['servify.mobile.requests.v1','preserved local drafts']]);
+let user=a,fail=false,result={data:randomUUID(),error:null},calls=0;
+const storage={getItem:async k=>disk.get(k)??null,setItem:async(k,v)=>{if(fail)throw Error('Unavailable');disk.set(k,v);},removeItem:async k=>{if(fail)throw Error('Unavailable');disk.delete(k);}};
+const client={auth:{getSession:async()=>({data:{session:user?{user:{id:user}}:null}})},rpc:()=>{calls++;return{abortSignal:async()=>result};}};
+const module={exports:{}},source=ts.transpileModule(readFileSync(resolve(root,'src/beta/trust.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+vm.runInThisContext('(function(exports,require,module){'+source+'\n})')(module.exports,name=>name==='./client'?{betaClient:client}:name==='./session-storage'?{sessionStorage:storage}:name==='./messaging-model'?model:require(name),module);
+const api=module.exports,p={kind:'feedback',args:{p_command:randomUUID(),p_job:job,p_revision:0,p_action:'review',p_rating:5,p_body:'Synthetic feedback',p_category:''}};
+await api.storeTrustIntent(a,'reviews',job,p);assert.deepEqual(await api.loadTrustIntent(a,'reviews',job),p);assert.equal(await api.loadTrustIntent(b,'reviews',job),null);assert.equal(await api.loadTrustIntent(a,'issues',job),null);
+await api.storeTrustIntent(a,'reviews',job,p);
+await assert.rejects(api.storeTrustIntent(a,'reviews',job,{...p,args:{...p.args,p_command:randomUUID()}}));
+await assert.rejects(api.storeTrustIntent(a,'reviews',job,{...p,args:{...p.args,p_body:'Changed same nonce'}}));
+await assert.rejects(api.clearTrustIntent(a,'reviews',job,randomUUID()));assert.deepEqual(await api.loadTrustIntent(a,'reviews',job),p);
+await api.executeTrustIntent(a,p);await api.executeTrustIntent(a,p);assert.equal(calls,2);
+user=b;await assert.rejects(api.executeTrustIntent(a,p),/Account changed/);assert.equal(calls,2);user=a;
+for(const r of [{data:null,error:{code:'PT409'}},{data:null,error:{code:'42501'}},{data:null,error:{code:'network'}},{data:'not-an-id',error:null}]){result=r;await assert.rejects(api.executeTrustIntent(a,p));assert.deepEqual(await api.loadTrustIntent(a,'reviews',job),p);}
+fail=true;await assert.rejects(api.clearTrustIntent(a,'reviews',job,p.args.p_command));fail=false;assert.deepEqual(await api.loadTrustIntent(a,'reviews',job),p);
+await api.clearTrustIntent(a,'reviews',job,p.args.p_command);
+disk.set('trust-intent.'+a+'.reviews.'+job,'not-json');await assert.rejects(api.loadTrustIntent(a,'reviews',job));assert.equal(disk.get('trust-intent.'+a+'.reviews.'+job),'not-json');
+assert.equal(disk.get('servify.mobile.requests.v1'),'preserved local drafts');
+console.log('PASS feedback queue restoration, account/scope isolation, immutable commands, guarded clearing, storage failures and uncertain/conflicting results.');

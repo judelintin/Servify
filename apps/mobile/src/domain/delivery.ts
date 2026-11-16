@@ -18,7 +18,7 @@ export interface JobMessage { id: string; sequence: number; actor: PreviewActor;
 export interface JobDelivery { id: string; jobId: string; offerId: string; providerId: string; customerId: typeof customerPreviewId; revision: number; status: DeliveryStatus; history: DeliveryEvent[]; schedules: ScheduleProposal[]; confirmedScheduleId: string | null; issues: JobIssue[]; messages: JobMessage[]; read: { customer: number; provider: number } }
 export const isOpenDelivery = (d: JobDelivery) => !["completed", "cancelled", "issue_reported"].includes(d.status);
 export const canSchedule = (d: JobDelivery) => ["confirmed", "scheduled"].includes(d.status);
-export const canReportIssue = (d: JobDelivery) => ["confirmed", "scheduled", "in_progress", "completion_requested"].includes(d.status);
+export const canReportIssue = (d: Pick<JobDelivery, "status">) => ["confirmed", "scheduled", "in_progress", "completion_requested"].includes(d.status);
 export const validTimestamp = (v: unknown): v is string => typeof v === "string" && Number.isFinite(Date.parse(v));
 const status = (v: unknown): v is DeliveryStatus => typeof v === "string" && Object.hasOwn(deliveryLabels, v);
 export function createDelivery(selection: PreviewSelection): JobDelivery {

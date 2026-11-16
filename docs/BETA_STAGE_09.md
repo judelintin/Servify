@@ -1,4 +1,85 @@
-# Stage 09 — Shared media, messaging and job lifecycle
+# Stage 09 — Shared media, messaging, lifecycle and trust
+
+## Stage 09D checkpoint review — 16 November 2026
+
+The user approved committing and publishing Stage 09D. Reviewed all 21 candidate files against e8f596380633770e185b260763d1e952c04f57e9. The 20 code/test/migration files match the previously verified snapshot; website source, Expo configuration, dependencies, local environments and records are unchanged. Reused passing lint, TypeScript, production build, local iOS export and independent-account browser/integration results rather than repeating comprehensive tests. Fresh feedback/local-trust, SecureStore, lifecycle and messaging state tests pass.
+
+Both new migration ledger hashes and all 11 current feedback function bodies match local SQL; pinned search paths, invoker/definer boundaries, participant/author RLS and denied anonymous execution remain intact. The prior HTTP 409 function hashes are unchanged, no live application function contains artificial 40001 codes, and all public tables retain RLS. Reviewed the complete main/origin-main history: 19 existing commits, 505 unique historical blobs and 354 paths; secret scanning and a private in-memory controlled-account identifier comparison found no credentials, real beta login identifiers, private environment files or generated artifacts. Private backup refs are excluded from publication; only main is authorized for a normal fast-forward push. Physical-device, SMTP, dependency-audit and existing leaked-password-protection limitations below remain outstanding. No application deployment or Stage 09E work is included.
+
+## Stage 09D — Shared reviews, reputation and issues (15 November 2026)
+
+### Scope and data preservation
+
+Implemented from main e8f596380633770e185b260763d1e952c04f57e9. This section supersedes older statements below that shared reviews/reputation and issue reporting are deferred. Earlier Git-checkpoint statements are historical. Stage 09D remains uncommitted for review; no later subphase, app deployment, package upgrade or account-policy change was made.
+
+The approved feedback editor is now a shared presentation component with separate local and authenticated persistence. Existing job/review/profile cards, stars, text inputs, confirmations and navigation are reused. No home, website or onboarding redesign. Source=beta review/job links never fall back to local records on authentication failure. Explicit device-local links preserve the original review and lifecycle workflows.
+
+No prototype requests, photographs, profiles, portfolios, messages, reviews, roles or onboarding preferences are automatically uploaded, rewritten or deleted. Tests use two independent authenticated clients/browser contexts and labelled synthetic jobs; SQL-only fixtures roll back. Real-account credentials remain outside Git in the existing encrypted Windows vault, supplied privately on stdin. No service-role key is used by the mobile app or the integration tests.
+
+### Migrations and authorization
+
+Applied only to servify-beta:
+
+- 20261114165919_beta_shared_trust.sql — local/hosted normalized-LF SQL MD5 dd1559ea21e6092b3a165b248d30d310.
+- 20261114170400_beta_feedback_snapshot.sql — MD5 a070b7be46b8b23db788b7de36bb245a. Participant job, schedules, events, feedback and issues are read as one atomic snapshot; the original beta_job contract remains intact.
+
+Existing reviews, professional_responses, review_versions, response_versions, job_issues, issue_cases, content_reports and private.commands are reused. Added a bounded report explanation, unique pending report per reporter/review/target and profile/version cursor indexes. The previously unused issue-description constraint is aligned to the existing local 15–2,000-character rule; preflight found no existing issue/review/response/report rows to truncate or transform.
+
+New public invoker RPCs call pinned-search-path private helpers:
+
+- beta_save_feedback: customer review/edit, reviewed professional response/edit and customer issue reporting.
+- beta_feedback: authorized participant snapshot, including private case status.
+- beta_reputation: member-only safe professional projection, server count/average and 50-row cursor pagination.
+- beta_review_jobs: own completed jobs, 50-row cursor pagination.
+- beta_report_review: private, deduplicated report without silently hiding content.
+
+All commands require active invited/confirmed membership and derive actor, job parties, status and timestamps on the server. Account-command locks then job/review locks serialize writes; expected revisions prevent silent overwrites. Matching command UUID/payload returns the original result. Changed command reuse and ordinary stale-state conflicts return PT409/HTTP 409, never artificial SQLSTATE 40001. Prior offer/profile conflict functions remain byte-for-byte unchanged.
+
+Reviews require completed status, server completed_at and an actual customer-authored completion event. Only that job's customer may submit/edit, one review per job; stars 1–5, optional text up to 2,000 characters. Responses require the reviewed professional, visible eligible review and 3–2,000 characters. Both preserve up to 30 immutable authored versions, with no edit deadline, matching approved local rules. Editing never clears moderation-hidden flags. Review and response edits share an optimistic review revision; they do not change the job lifecycle revision.
+
+Raw review/response rows retain sensitive job/account associations and are restricted to job participants/administrators. Old text versions are available only to their author or authorized administrators. The authenticated reputation projection exposes current visible eligible ratings/text and visible responses, without customer IDs, job IDs, issue data, private report explanations or old text versions. Hidden reviews contribute neither count nor average; hidden response text stays off profiles. Counts aggregate current reviews, not historical versions. Ratings are not identity verification.
+
+Issue reporting follows the existing customer-only path for confirmed, scheduled, in-progress or completion-requested jobs. Category and 15–2,000-character description are validated server-side. One atomic command creates the private issue/open case, withdraws pending schedules and advances the job to issue_reported with a generic activity event. Sensitive description text is not copied into public reputation or generic event notes. Participants can read relevant issue/case data; unrelated, unverified, suspended and anonymous users cannot. Clients cannot resolve cases or directly mutate issue/review/version tables. No automatic dispute settlement or support-notification claim.
+
+### Mobile synchronization and failure handling
+
+Completed shared jobs link to the existing feedback screen. Customer offer cards link to the relevant professional's shared reputation. The Professional profile displays server reputation, including when a new device has no local profile draft; its existing local profile remains separate.
+
+Review/response writes append generic job activity. Detail screens reuse the existing authorized job_events subscription with debounced/coalesced snapshot reads, cleanup on unmount/account change, foreground/reconnection catch-up and explicit refresh. No additional Realtime table publication, per-review channel, polling interval or automatic command retry loop was added. Profile aggregates/list pages read on entry, foreground, connectivity recovery and explicit refresh; they do not claim live push, read receipts or background notification delivery.
+
+Before transmission the exact action, revision and nonce are saved in a separate account/scope/resource namespace through the intended SecureStore adapter (native WHEN_UNLOCKED_THIS_DEVICE_ONLY; web sessionStorage). Failed/unknown results preserve a manual retry instruction across reload. Retry uses the identical nonce/payload. Serialized writes reject changed payloads or other pending commands; compare-and-clear prevents an older success from removing a newer instruction. Nothing silently rebases to a newer review revision. Users may explicitly dismiss only the instruction after refreshing; this never deletes server history. Invalid/unavailable storage blocks further writes and is preserved for recovery. Account changes unmount private data; another account cannot open the saved instruction. Confirmed reads are not saved into prototype storage.
+
+Loading, empty, retry, pending, error and confirmed-save messages reflect actual backend results. Content reports are stored privately but do not imply moderation has occurred. Shared case status comes from Supabase; resolution administration remains outside this mobile milestone.
+
+### Verification and findings
+
+- Independent real HTTPS accounts: PASS eligible and rating-only review submission, same-command retry, duplicate/changed-command prevention, edits, professional responses/edits, retained versions, competing expected revisions (one succeeds, one 409), server rating/count calculations, private content reports/issues, invalid lifecycle states and independent logout.
+- supabase/tests/beta_trust_security.sql: PASS rollback-only unrelated/unverified/anonymous denial, spoofed administrator metadata, raw-write and version deletion denial, writer-only history, required customer completion event, hidden-review/response preservation, safe aggregate projection and private issue/case access.
+- Existing beta_messaging_security.sql and beta_media_security.sql rollback regressions: PASS.
+- Browser checks: PASS two actual independent sign-ins, counterpart review/response refresh through Realtime, editing/history, server profile reputation, reporting, private issue status, failed-save -> reload -> same-command retry, sign-out isolation, keyboard validation/focus, reduced motion and 320/390/430px overflow checks. Original local draft/profile/marketplace fixture bytes remain unchanged.
+- Existing device-local review browser suite: PASS at 320/390/430px, including rating-only submission, edit, professional response/edit, local reputation, mode switching/reload, hidden content, incomplete-job denial and failed-storage recovery.
+- Retry-state unit test: PASS account/scope isolation, immutable pending payloads, guarded clearing, uncertain/stale/unauthorized results, corrupted storage preservation and unchanged local-draft key. Existing secure-session, messaging-state, lifecycle-state and local delivery/trust tests: PASS.
+- Existing actual scheduling/lifecycle regression: PASS acceptance, scheduling/rejection/rescheduling/withdrawal, concurrent conflict, live activity, work/completion, ordered history and private reads/writes.
+- Existing actual media regression: PASS authorized job/profile/portfolio upload/readback, MIME/size/count constraints, owner/participant/stranger/anonymous boundaries, immutable files, signed expiry and cleanup of its own synthetic assets. Publication/offer/selection remains intact.
+- Invite-only Auth regression: PASS confirmation enabled, anonymous/uninvited access and public signup denied; no delivery/recovery claim. The HTTP 409/two-way messaging performance regression passes (419 ms profile conflict, 288 ms selection conflict in this run).
+- Website/mobile lint and TypeScript: PASS. Website production build: PASS. Local iOS Hermes export: PASS; generated artifacts remain ignored, with no EAS build or deployment. No dependency or lockfile change.
+- Screenshot review exposed a literal JSX space directly inside the existing shared-job View. It produced React Native's Unexpected text node development warning. Removed only that whitespace, preserving layout/actions, and added console-error coverage; the deliberately injected network failure is excluded explicitly. Initial browser fixture/network startup failures did not justify changing application authorization.
+- Changed-source secret scan: PASS across all 21 Stage 09D source/test/migration/documentation files (197 KB reviewed). No environment, vault, generated artifact or dependency changes are candidates. Git remains on main at e8f5963; all 21 changes remain unstaged/uncommitted. Website source and Expo ownership/configuration are unchanged. Website, Metro status and public tunnel all returned HTTP 200.
+- Security advisor: existing [leaked-password-protection warning](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) only. Performance advisor: 27 [unused-index INFO findings](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); no missing-FK/duplicate-index warning. No index removal or service upgrade.
+- At 16:32:27–16:41:05 UTC, rollback counter increased by 39 across 518 seconds including intentional denial/rollback tests, with zero deadlocks, blocked sessions or idle-in-transaction sessions at the final snapshot. All public tables retain RLS. No live application function contains artificial 40001 retry codes; prior conflict-function hashes match. Available postgres logs for 15:30–16:42 UTC contain zero 40001 or deadlock messages. No retry storm was observed; these are counter/log observations, not a CPU-percentage measurement or load test.
+
+### Review, limitations and next checkpoint
+
+Website: http://localhost:3001. Expo Go: exp://c-kodlinsteam-qg883e-mwi16nh6v1ml6e0e.on.expo.app/--/beta. Both stopped development servers were restored from C:\Projects\servify using existing configuration; this replaces historical tunnel links below. Keep this computer online.
+
+Manual flow: independent Customer/Professional beta accounts select a shared offer, accept/start/request/confirm work through Job progress, then open View completed-job review. Customer submits/edits feedback; Professional opens that same completed job to respond. View shared professional reputation refreshes aggregate records. To test issues, use a separate accepted unfinished job: Customer describes the issue, confirms, and both participants inspect its private open case. Issue reporting intentionally pauses that job; do not use a valuable test job unintentionally.
+
+Automated database/API/browser tests and local iOS compilation are not physical-iPhone approval. Still pending: two actual phones, native SecureStore failed-action restoration after force-close, VoiceOver/TalkBack, keyboards/safe areas and background/network interruptions. Device-local records remain device-local; sessionStorage is not cross-tab/device draft synchronization. Synthetic shared jobs/reviews/issues from integration runs remain clearly labelled test history, never presented as real customer activity. Test only with synthetic, non-sensitive review/issue text.
+
+SMTP/mailbox verification/recovery delivery, external tester admission, notification delivery, administrative moderation/resolution integration, dispute/cancellation policy and the documented Stage 09A content-inspection limitation remain unresolved. Existing moderate dependency-audit findings remain recorded; no package update was undertaken. Authentication restrictions and private buckets were not weakened.
+
+Next checkpoint: review the uncommitted Stage 09D implementation and authorize any Git checkpoint separately. Perform deferred physical-device review when ready. Do not begin another subphase automatically.
+
 
 ## Stage 09C — Shared scheduling and job lifecycle (14 November 2026)
 
