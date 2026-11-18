@@ -1,0 +1,12 @@
+# Build-only configuration. Does not link Git, select a site or deploy.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# Next.js/OpenNext is auto-detected. Do not bypass it with a static export,
+# SPA catch-all rewrite, direct upload of .next, or a pinned legacy adapter.
+# Runtime operator secrets must be set through Netlify UI/API with Functions
+# scope, not in this file. Leave them unset to keep Admin closed.

@@ -13,3 +13,4 @@ artifacts/
 supabase/.temp/
 apps/mobile/.expo/
 apps/mobile/dist/
+.netlify/
